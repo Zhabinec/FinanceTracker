@@ -1,0 +1,15 @@
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\bin\Debug\net10.0\Finance.Application.deps.json
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\bin\Debug\net10.0\Finance.Application.dll
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\bin\Debug\net10.0\Finance.Application.pdb
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\bin\Debug\net10.0\Finance.Domain.dll
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\bin\Debug\net10.0\Finance.Domain.pdb
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance.Application.csproj.AssemblyReference.cache
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance.Application.GeneratedMSBuildEditorConfig.editorconfig
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance.Application.AssemblyInfoInputs.cache
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance.Application.AssemblyInfo.cs
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance.Application.csproj.CoreCompileInputs.cache
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance..0798594C.Up2Date
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance.Application.dll
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\refint\Finance.Application.dll
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\Finance.Application.pdb
+E:\DEVELOPING\CProjects\FinanceTracker\backend\src\Finance.Application\obj\Debug\net10.0\ref\Finance.Application.dll

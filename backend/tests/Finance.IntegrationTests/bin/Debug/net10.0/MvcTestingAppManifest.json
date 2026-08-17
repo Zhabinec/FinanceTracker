@@ -1,0 +1,6 @@
+{
+  "Finance.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "E:\\DEVELOPING\\CProjects\\FinanceTracker\\backend\\src\\Finance.Api",
+  "Finance.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "E:\\DEVELOPING\\CProjects\\FinanceTracker\\backend\\src\\Finance.Application",
+  "Finance.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "E:\\DEVELOPING\\CProjects\\FinanceTracker\\backend\\src\\Finance.Domain",
+  "Finance.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "E:\\DEVELOPING\\CProjects\\FinanceTracker\\backend\\src\\Finance.Infrastructure"
+}

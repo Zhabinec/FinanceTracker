@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/backend/" />
+  <Folder Name="/backend/src/">
+    <Project Path="backend/src/Finance.Api/Finance.Api.csproj" />
+    <Project Path="backend/src/Finance.Application/Finance.Application.csproj" />
+    <Project Path="backend/src/Finance.Domain/Finance.Domain.csproj" />
+    <Project Path="backend/src/Finance.Infrastructure/Finance.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/backend/tests/">
+    <Project Path="backend/tests/Finance.IntegrationTests/Finance.IntegrationTests.csproj" />
+    <Project Path="backend/tests/Finance.UnitTests/Finance.UnitTests.csproj" />
+  </Folder>
+</Solution>
