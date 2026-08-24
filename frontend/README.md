@@ -1,75 +1,41 @@
-# React + TypeScript + Vite
+# Finance Tracker Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Frontend личного финансового трекера на React, TypeScript и Vite.
 
-Currently, two official plugins are available:
+## Реализовано
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- регистрация пользователя;
+- вход по email и паролю;
+- клиентская валидация форм;
+- JWT access token в памяти приложения;
+- refresh token в `HttpOnly` cookie;
+- автоматическое восстановление сессии;
+- защищённый маршрут текущего пользователя;
+- выход с отзывом refresh token;
+- отображение ошибок backend API.
 
-## React Compiler
+## Локальный запуск
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Сначала запустите профиль `https` проекта `Finance.Api` в Visual Studio.
+API должен слушать `https://localhost:7105`.
 
-## Expanding the ESLint configuration
+Затем из папки `frontend` выполните:
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```powershell
+npm.cmd run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Frontend будет доступен по адресу `http://localhost:5173`.
+Vite проксирует запросы `/api` на локальный ASP.NET Core API.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Проверка
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```powershell
+npm.cmd run lint
+npm.cmd run build
 ```
+
+## Следующий этап
+
+Следующий вертикальный срез — управление категориями доходов и расходов:
+создание, список, переименование, деактивация и восстановление.
