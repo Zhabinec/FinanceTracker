@@ -1,6 +1,34 @@
-@Finance.Api_HostAddress = http://localhost:5280
+@host = http://localhost:5280
+@email = manual.test@example.com
+@password = StrongPass123!
 
-GET {{Finance.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Health check
 
-###
+GET {{host}}/health
+
+### Register (change email after the first successful run)
+
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "baseCurrency": "RUB"
+}
+
+### Login
+
+# @name login
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Current user
+
+GET {{host}}/api/users/me
+Authorization: Bearer {{login.response.body.$.accessToken}}
