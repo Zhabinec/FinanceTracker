@@ -1,0 +1,12 @@
+import { createContext } from 'react'
+import type { CurrentUser } from './authApi'
+
+export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
+export type AuthContextValue = {
+  status: AuthStatus
+  user: CurrentUser | null
+  signIn(email: string, password: string): Promise<void>
+  signOut(): Promise<void>
+}
+
+export const AuthContext = createContext<AuthContextValue | null>(null)
