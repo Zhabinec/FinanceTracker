@@ -10,6 +10,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
 {
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
+
     public DbSet<Category> Categories => Set<Category>();
 
     public DbSet<FinanceTransaction> Transactions => Set<FinanceTransaction>();

@@ -1,5 +1,6 @@
 using Finance.Application.Abstractions;
 using Finance.Application.Auth.Login;
+using Finance.Application.Auth.Refresh;
 using Finance.Domain.Users;
 
 namespace Finance.UnitTests.Application;
@@ -19,7 +20,8 @@ public sealed class LoginUserHandlerTests
         var handler = new LoginUserHandler(
             new FakeUserLoginStore(user),
             new FakePasswordHasher(),
-            new FakeAccessTokenProvider());
+            new FakeAccessTokenProvider(), new FakeRefreshSessionStore(),
+            new FakeRefreshTokenProtector(), new FakeClock(), new RefreshTokenSettings(30));
 
         var result = await handler.HandleAsync(
             new LoginUserCommand("USER@EXAMPLE.COM", "correct-password"),
@@ -36,7 +38,8 @@ public sealed class LoginUserHandlerTests
         var handler = new LoginUserHandler(
             new FakeUserLoginStore(CreateUser()),
             new FakePasswordHasher(),
-            new FakeAccessTokenProvider());
+            new FakeAccessTokenProvider(), new FakeRefreshSessionStore(),
+            new FakeRefreshTokenProtector(), new FakeClock(), new RefreshTokenSettings(30));
 
         var result = await handler.HandleAsync(
             new LoginUserCommand("user@example.com", "wrong-password"),
@@ -53,7 +56,8 @@ public sealed class LoginUserHandlerTests
         var handler = new LoginUserHandler(
             new FakeUserLoginStore(null),
             passwordHasher,
-            new FakeAccessTokenProvider());
+            new FakeAccessTokenProvider(), new FakeRefreshSessionStore(),
+            new FakeRefreshTokenProtector(), new FakeClock(), new RefreshTokenSettings(30));
 
         var result = await handler.HandleAsync(
             new LoginUserCommand("unknown@example.com", "some-password"),
@@ -100,5 +104,26 @@ public sealed class LoginUserHandlerTests
     {
         public AccessToken Create(User user) =>
             new("access-token", TokenExpiration);
+    }
+
+    private sealed class FakeRefreshSessionStore : IRefreshSessionStore
+    {
+        public Task AddAsync(RefreshSession session, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<User?> RotateAsync(string currentTokenHash, string newTokenHash,
+            DateTimeOffset nowUtc, DateTimeOffset newExpiresAtUtc,
+            CancellationToken cancellationToken) => Task.FromResult<User?>(null);
+        public Task RevokeAsync(string tokenHash, DateTimeOffset nowUtc,
+            CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    private sealed class FakeRefreshTokenProtector : IRefreshTokenProtector
+    {
+        public string Generate() => "refresh-token";
+        public string Hash(string token) => new('A', 64);
+    }
+
+    private sealed class FakeClock : IClock
+    {
+        public DateTimeOffset UtcNow => RegistrationTime;
     }
 }

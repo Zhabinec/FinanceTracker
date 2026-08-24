@@ -5,9 +5,12 @@ using Finance.Api.Security;
 using Finance.Application.Abstractions;
 using Finance.Application.Auth.Login;
 using Finance.Application.Auth.Register;
+using Finance.Application.Auth.Refresh;
+using Finance.Application.Auth.Logout;
 using Finance.Application.Users.GetCurrent;
 using Finance.Infrastructure.Persistence;
 using Finance.Infrastructure.Time;
+using Finance.Infrastructure.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -21,6 +24,7 @@ var jwtOptions = builder.Configuration
     .GetSection(JwtOptions.SectionName)
     .Get<JwtOptions>()
     ?? throw new InvalidOperationException("JWT configuration is missing.");
+var refreshTokenLifetimeDays = builder.Configuration.GetValue<int>("Auth:RefreshTokenLifetimeDays");
 
 if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) ||
     string.IsNullOrWhiteSpace(jwtOptions.Audience) ||
@@ -30,6 +34,8 @@ if (string.IsNullOrWhiteSpace(jwtOptions.Issuer) ||
     throw new InvalidOperationException(
         "JWT issuer, audience, signing key of at least 32 bytes, and lifetime from 1 to 60 minutes are required.");
 }
+if (refreshTokenLifetimeDays is <= 0 or > 90)
+    throw new InvalidOperationException("Refresh token lifetime must be from 1 to 90 days.");
 
 var jwtSigningKey = new SymmetricSecurityKey(
     Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
@@ -39,15 +45,21 @@ builder.Services.AddDbContext<FinanceDbContext>(options =>
 builder.Services.AddScoped<IUserRegistrationStore, UserRegistrationStore>();
 builder.Services.AddScoped<IUserLoginStore, UserLoginStore>();
 builder.Services.AddScoped<IUserProfileStore, UserProfileStore>();
+builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton<IAccessTokenProvider, JwtAccessTokenProvider>();
+builder.Services.AddSingleton<IRefreshTokenProtector, RefreshTokenProtector>();
+builder.Services.AddSingleton(new RefreshTokenSettings(refreshTokenLifetimeDays));
+builder.Services.AddScoped<RefreshCookieService>();
 builder.Services.AddScoped<RegisterUserHandler>();
 builder.Services.AddScoped<LoginUserHandler>();
 builder.Services.AddScoped<GetCurrentUserHandler>();
+builder.Services.AddScoped<RefreshTokensHandler>();
+builder.Services.AddScoped<LogoutHandler>();
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("postgresql");
 

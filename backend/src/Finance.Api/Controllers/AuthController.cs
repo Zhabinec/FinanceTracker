@@ -1,6 +1,9 @@
 using Finance.Api.Contracts.Auth;
 using Finance.Application.Auth.Login;
 using Finance.Application.Auth.Register;
+using Finance.Application.Auth.Refresh;
+using Finance.Application.Auth.Logout;
+using Finance.Api.Security;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Finance.Api.Controllers;
@@ -9,7 +12,10 @@ namespace Finance.Api.Controllers;
 [Route("api/auth")]
 public sealed class AuthController(
     RegisterUserHandler registerUserHandler,
-    LoginUserHandler loginUserHandler) : ControllerBase
+    LoginUserHandler loginUserHandler,
+    RefreshTokensHandler refreshTokensHandler,
+    LogoutHandler logoutHandler,
+    RefreshCookieService refreshCookieService) : ControllerBase
 {
     [HttpPost("register")]
     [ProducesResponseType<RegisteredUserDto>(StatusCodes.Status201Created)]
@@ -64,6 +70,44 @@ public sealed class AuthController(
             });
         }
 
+        refreshCookieService.Write(Response, result.RefreshToken!,
+            result.RefreshTokenExpiresAtUtc!.Value);
         return Ok(new LoginResponse(result.AccessToken!, result.ExpiresAtUtc!.Value));
+    }
+
+    [HttpPost("refresh")]
+    [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
+    {
+        var token = refreshCookieService.Read(Request);
+        var result = await refreshTokensHandler.HandleAsync(
+            new RefreshTokensCommand(token ?? string.Empty), cancellationToken);
+
+        if (result.Status == RefreshTokensStatus.InvalidToken)
+        {
+            refreshCookieService.Delete(Response);
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Invalid refresh token.",
+                Status = StatusCodes.Status401Unauthorized
+            });
+        }
+
+        refreshCookieService.Write(Response, result.RefreshToken!,
+            result.RefreshTokenExpiresAtUtc!.Value);
+        return Ok(new LoginResponse(result.AccessToken!,
+            result.AccessTokenExpiresAtUtc!.Value));
+    }
+
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        await logoutHandler.HandleAsync(
+            new LogoutCommand(refreshCookieService.Read(Request) ?? string.Empty),
+            cancellationToken);
+        refreshCookieService.Delete(Response);
+        return NoContent();
     }
 }

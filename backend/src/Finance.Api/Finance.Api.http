@@ -32,3 +32,17 @@ Content-Type: application/json
 
 GET {{host}}/api/users/me
 Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Rotate refresh token (uses HttpOnly cookie saved by the client)
+
+# @name refresh
+POST {{host}}/api/auth/refresh
+
+### Current user with rotated access token
+
+GET {{host}}/api/users/me
+Authorization: Bearer {{refresh.response.body.$.accessToken}}
+
+### Logout (revokes refresh session and deletes cookie)
+
+POST {{host}}/api/auth/logout
