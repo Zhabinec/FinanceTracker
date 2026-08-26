@@ -44,7 +44,7 @@ namespace Finance.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "Name")
+                    b.HasIndex("UserId", "Type", "Name")
                         .IsUnique();
 
                     b.ToTable("categories", (string)null);

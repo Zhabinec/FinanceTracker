@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
 import { register as registerUser } from './authApi'
-import { getApiError } from './apiError'
+import { getApiError } from '../../api/apiError'
 import { registerSchema, type RegisterForm } from './validation'
 
 export function RegisterPage() {

@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
+using System.Text.Json.Serialization;
 using Finance.Api.HealthChecks;
 using Finance.Api.Security;
 using Finance.Application.Abstractions;
@@ -8,6 +9,11 @@ using Finance.Application.Auth.Register;
 using Finance.Application.Auth.Refresh;
 using Finance.Application.Auth.Logout;
 using Finance.Application.Users.GetCurrent;
+using Finance.Application.Categories.Create;
+using Finance.Application.Categories.Deactivate;
+using Finance.Application.Categories.GetCategories;
+using Finance.Application.Categories.Rename;
+using Finance.Application.Categories.Restore;
 using Finance.Infrastructure.Persistence;
 using Finance.Infrastructure.Time;
 using Finance.Infrastructure.Security;
@@ -45,6 +51,7 @@ builder.Services.AddDbContext<FinanceDbContext>(options =>
 builder.Services.AddScoped<IUserRegistrationStore, UserRegistrationStore>();
 builder.Services.AddScoped<IUserLoginStore, UserLoginStore>();
 builder.Services.AddScoped<IUserProfileStore, UserProfileStore>();
+builder.Services.AddScoped<ICategoryStore, CategoryStore>();
 builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
 builder.Services.AddSingleton<IClock, SystemClock>();
@@ -60,6 +67,11 @@ builder.Services.AddScoped<LoginUserHandler>();
 builder.Services.AddScoped<GetCurrentUserHandler>();
 builder.Services.AddScoped<RefreshTokensHandler>();
 builder.Services.AddScoped<LogoutHandler>();
+builder.Services.AddScoped<CreateCategoryHandler>();
+builder.Services.AddScoped<GetCategoriesHandler>();
+builder.Services.AddScoped<RenameCategoryHandler>();
+builder.Services.AddScoped<DeactivateCategoryHandler>();
+builder.Services.AddScoped<RestoreCategoryHandler>();
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("postgresql");
 
@@ -83,7 +95,9 @@ builder.Services
     });
 builder.Services.AddAuthorization();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AccountPage } from './features/auth/AccountPage'
+import { CategoriesPage } from './features/categories/CategoriesPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { useAuth } from './features/auth/useAuth'
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/login" element={status === 'authenticated' ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/register" element={status === 'authenticated' ? <Navigate to="/" replace /> : <RegisterPage />} />
       <Route path="/" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
+      <Route path="/categories" element={<ProtectedRoute><CategoriesPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

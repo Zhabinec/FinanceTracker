@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
 import { useAuth } from './useAuth'
-import { getApiError } from './apiError'
+import { getApiError } from '../../api/apiError'
 import { loginSchema, type LoginForm } from './validation'
 
 export function LoginPage() {
