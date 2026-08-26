@@ -3,11 +3,22 @@ import { useQueryClient } from '@tanstack/react-query'
 import * as authApi from './authApi'
 import type { CurrentUser } from './authApi'
 import { AuthContext, type AuthContextValue, type AuthStatus } from './authContext'
+import { setSessionExpiredHandler } from '../../api/http'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [user, setUser] = useState<CurrentUser | null>(null)
   const queryClient = useQueryClient()
+
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      queryClient.clear()
+      setUser(null)
+      setStatus('anonymous')
+    })
+
+    return () => setSessionExpiredHandler(null)
+  }, [queryClient])
 
   useEffect(() => {
     let active = true
@@ -30,10 +41,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus('authenticated')
     },
     async signOut() {
-      await authApi.logout()
-      queryClient.clear()
-      setUser(null)
-      setStatus('anonymous')
+      try {
+        await authApi.logout()
+      } catch {
+        // Local logout must still complete when the API cannot revoke the session.
+      } finally {
+        queryClient.clear()
+        setUser(null)
+        setStatus('anonymous')
+      }
     },
   }), [queryClient, status, user])
 

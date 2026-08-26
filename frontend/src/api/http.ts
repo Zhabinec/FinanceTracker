@@ -4,11 +4,16 @@ type TokenResponse = { accessToken: string; expiresAtUtc: string }
 
 let accessToken: string | null = null
 let refreshRequest: Promise<string> | null = null
+let sessionExpiredHandler: (() => void) | null = null
 
 export const http = axios.create({ baseURL: '/api', withCredentials: true })
 
 export function setAccessToken(token: string | null) {
   accessToken = token
+}
+
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  sessionExpiredHandler = handler
 }
 
 http.interceptors.request.use((config) => {
@@ -31,7 +36,13 @@ http.interceptors.response.use(undefined, async (error: AxiosError) => {
     })
     .finally(() => { refreshRequest = null })
 
-  const token = await refreshRequest
-  config.headers.Authorization = `Bearer ${token}`
-  return http(config)
+  try {
+    const token = await refreshRequest
+    config.headers.Authorization = `Bearer ${token}`
+    return http(config)
+  } catch (refreshError) {
+    setAccessToken(null)
+    sessionExpiredHandler?.()
+    return Promise.reject(refreshError)
+  }
 })
