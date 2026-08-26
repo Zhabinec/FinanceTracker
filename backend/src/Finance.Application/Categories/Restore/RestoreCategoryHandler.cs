@@ -25,7 +25,7 @@ public sealed class RestoreCategoryHandler(
         }
 
         category.Activate();
-        await categoryStore.TrySaveAsync(cancellationToken);
+        await categoryStore.SaveChangesAsync(cancellationToken);
         return CategoryMutationResult.Success(CategoryDto.From(category));
     }
 }

@@ -21,7 +21,11 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
         });
 
         builder.Property(category => category.Name)
-            .HasMaxLength(100)
+            .HasMaxLength(Category.MaxNameLength)
+            .IsRequired();
+
+        builder.Property(category => category.NormalizedName)
+            .HasMaxLength(Category.MaxNameLength)
             .IsRequired();
 
         builder.Property(category => category.Type)
@@ -35,7 +39,7 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
             {
                 category.UserId,
                 category.Type,
-                category.Name
+                category.NormalizedName
             })
             .IsUnique();
 

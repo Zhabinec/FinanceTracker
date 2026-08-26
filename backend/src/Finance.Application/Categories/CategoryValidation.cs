@@ -1,3 +1,4 @@
+using Finance.Domain.Categories;
 using Finance.Domain.Transactions;
 
 namespace Finance.Application.Categories;
@@ -12,9 +13,9 @@ internal static class CategoryValidation
         {
             errors["name"] = ["Category name is required."];
         }
-        else if (name.Trim().Length > 100)
+        else if (name.Trim().Length > Category.MaxNameLength)
         {
-            errors["name"] = ["Category name cannot exceed 100 characters."];
+            errors["name"] = [$"Category name cannot exceed {Category.MaxNameLength} characters."];
         }
 
         return errors;

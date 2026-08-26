@@ -36,6 +36,11 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
@@ -44,7 +49,7 @@ namespace Finance.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId", "Type", "Name")
+                    b.HasIndex("UserId", "Type", "NormalizedName")
                         .IsUnique();
 
                     b.ToTable("categories", (string)null);

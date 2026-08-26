@@ -5,6 +5,8 @@ namespace Finance.Domain.Categories;
 
 public sealed class Category
 {
+    public const int MaxNameLength = 100;
+
     private Category()
     {
     }
@@ -14,6 +16,7 @@ public sealed class Category
         Id = id;
         UserId = userId;
         Name = name;
+        NormalizedName = NormalizeName(name);
         Type = type;
         IsActive = true;
     }
@@ -23,6 +26,8 @@ public sealed class Category
     public Guid UserId { get; private set; }
 
     public string Name { get; private set; } = string.Empty;
+
+    public string NormalizedName { get; private set; } = string.Empty;
 
     public TransactionType Type { get; private set; }
 
@@ -40,7 +45,7 @@ public sealed class Category
             throw new DomainException("Category name is required.");
         }
 
-        if (name.Trim().Length > 100)
+        if (name.Trim().Length > MaxNameLength)
         {
             throw new DomainException("Category name cannot exceed 100 characters.");
         }
@@ -60,15 +65,19 @@ public sealed class Category
             throw new DomainException("Category name is required.");
         }
 
-        if (name.Trim().Length > 100)
+        if (name.Trim().Length > MaxNameLength)
         {
             throw new DomainException("Category name cannot exceed 100 characters.");
         }
 
         Name = name.Trim();
+        NormalizedName = NormalizeName(Name);
     }
 
     public void Deactivate() => IsActive = false;
 
     public void Activate() => IsActive = true;
+
+    private static string NormalizeName(string name) =>
+        name.Trim().ToUpperInvariant();
 }

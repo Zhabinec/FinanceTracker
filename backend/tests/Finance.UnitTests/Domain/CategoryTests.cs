@@ -17,8 +17,23 @@ public sealed class CategoryTests
 
         Assert.Equal(userId, category.UserId);
         Assert.Equal("Food", category.Name);
+        Assert.Equal("FOOD", category.NormalizedName);
         Assert.Equal(TransactionType.Expense, category.Type);
         Assert.True(category.IsActive);
+    }
+
+    [Fact]
+    public void Rename_WithDifferentCase_UpdatesNormalizedName()
+    {
+        var category = Category.Create(
+            Guid.NewGuid(),
+            "Food",
+            TransactionType.Expense);
+
+        category.Rename("  groceries  ");
+
+        Assert.Equal("groceries", category.Name);
+        Assert.Equal("GROCERIES", category.NormalizedName);
     }
 
     [Fact]

@@ -31,7 +31,7 @@ public sealed class RenameCategoryHandler(
         }
 
         category.Rename(command.Name!);
-        return await categoryStore.TrySaveAsync(cancellationToken)
+        return await categoryStore.TrySaveNameChangeAsync(cancellationToken)
             ? CategoryMutationResult.Success(CategoryDto.From(category))
             : CategoryMutationResult.Duplicate();
     }

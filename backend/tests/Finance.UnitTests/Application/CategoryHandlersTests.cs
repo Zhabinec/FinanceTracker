@@ -200,10 +200,16 @@ public sealed class CategoryHandlersTests
             return Task.FromResult(AddSucceeds);
         }
 
-        public Task<bool> TrySaveAsync(CancellationToken cancellationToken)
+        public Task<bool> TrySaveNameChangeAsync(CancellationToken cancellationToken)
         {
             Saves++;
             return Task.FromResult(SaveSucceeds);
+        }
+
+        public Task SaveChangesAsync(CancellationToken cancellationToken)
+        {
+            Saves++;
+            return Task.CompletedTask;
         }
     }
 }

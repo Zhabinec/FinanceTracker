@@ -7,7 +7,8 @@ namespace Finance.Infrastructure.Persistence;
 
 public sealed class CategoryStore(FinanceDbContext dbContext) : ICategoryStore
 {
-    private const string UniqueNameConstraint = "IX_categories_UserId_Type_Name";
+    private const string UniqueNameConstraint =
+        "IX_categories_UserId_Type_NormalizedName";
 
     public async Task<IReadOnlyList<Category>> ListByUserAsync(
         Guid userId,
@@ -44,7 +45,7 @@ public sealed class CategoryStore(FinanceDbContext dbContext) : ICategoryStore
         CancellationToken cancellationToken)
     {
         dbContext.Categories.Add(category);
-        var saved = await TrySaveAsync(cancellationToken);
+        var saved = await TrySaveNameChangeAsync(cancellationToken);
 
         if (!saved)
         {
@@ -54,7 +55,8 @@ public sealed class CategoryStore(FinanceDbContext dbContext) : ICategoryStore
         return saved;
     }
 
-    public async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
+    public async Task<bool> TrySaveNameChangeAsync(
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -71,4 +73,7 @@ public sealed class CategoryStore(FinanceDbContext dbContext) : ICategoryStore
             return false;
         }
     }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken) =>
+        dbContext.SaveChangesAsync(cancellationToken);
 }

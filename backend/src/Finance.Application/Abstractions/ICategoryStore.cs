@@ -16,5 +16,7 @@ public interface ICategoryStore
 
     Task<bool> TryAddAsync(Category category, CancellationToken cancellationToken);
 
-    Task<bool> TrySaveAsync(CancellationToken cancellationToken);
+    Task<bool> TrySaveNameChangeAsync(CancellationToken cancellationToken);
+
+    Task SaveChangesAsync(CancellationToken cancellationToken);
 }
