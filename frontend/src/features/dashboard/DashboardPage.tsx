@@ -6,7 +6,9 @@ import { getApiError } from '../../api/apiError'
 import { useAuth } from '../auth/useAuth'
 import type { FinanceTransaction } from '../transactions/transactionApi'
 import { todayInMoscow } from '../transactions/validation'
-import { formatMoney, formatDate } from '../../shared/formatting'
+import { formatDate } from '../../shared/formatting'
+import { CurrencySelector } from '../currencies/CurrencySelector'
+import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 
 type Dashboard = {
   from: string; to: string; income: string; expense: string; result: string
@@ -16,6 +18,7 @@ type Dashboard = {
 
 export function DashboardPage() {
   const { user, signOut } = useAuth()
+  const display = useCurrencyDisplay()
   const today = todayInMoscow()
   const [period, setPeriod] = useState({ from: `${today.slice(0, 7)}-01`, to: today })
   const [leaving, setLeaving] = useState(false)
@@ -23,7 +26,7 @@ export function DashboardPage() {
     queryKey: ['dashboard', period],
     queryFn: async ({ signal }) => (await http.get<Dashboard>('/dashboard', { params: period, signal })).data,
   })
-  const money = (amount: string) => formatMoney(amount, user?.baseCurrency ?? 'RUB')
+  const money = (amount: string) => display.money(amount, user?.baseCurrency ?? 'RUB')
   const data = query.data
 
   return <main className="dashboard-shell">
@@ -36,6 +39,7 @@ export function DashboardPage() {
         <button className="ghost-button" disabled={leaving} onClick={async () => { setLeaving(true); await signOut() }}>Выйти</button>
       </nav>
     </header>
+    <CurrencySelector />
     <section className="transactions-list-card">
       <h2>Выбранный период</h2>
       <div className="transaction-filters">

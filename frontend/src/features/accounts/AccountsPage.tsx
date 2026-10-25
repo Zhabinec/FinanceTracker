@@ -3,7 +3,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { http } from '../../api/http'
 import { getApiError } from '../../api/apiError'
-import { formatMoney } from '../../shared/formatting'
+import { CurrencySelector } from '../currencies/CurrencySelector'
+import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { useAuth } from '../auth/useAuth'
 import { useAccounts, type MoneyAccount } from './accountApi'
 import { openingBalanceSchema } from './validation'
@@ -12,6 +13,7 @@ function AccountCard({ account, onChange, busy }: {
   account: MoneyAccount; busy: boolean
   onChange: (account: MoneyAccount, name: string, isArchived: boolean) => Promise<void>
 }) {
+  const display = useCurrencyDisplay()
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(account.name)
   const [version, setVersion] = useState(account.version)
@@ -24,8 +26,8 @@ function AccountCard({ account, onChange, busy }: {
   return <article className="transactions-list-card account-card">
     <h2>{account.name}</h2>
     <p>{account.currency} · {account.isArchived ? 'В архиве' : 'Активен'}</p>
-    <strong className="summary-value">{formatMoney(account.balance, account.currency)}</strong>
-    <p className="dashboard-note">Начальный остаток: {formatMoney(account.openingBalance, account.currency)}</p>
+    <strong className="summary-value">{display.money(account.balance, account.currency)}</strong>
+    <p className="dashboard-note">Начальный остаток: {display.money(account.openingBalance, account.currency)}</p>
     {error && <div className="notice error" role="alert">{error}</div>}
     {editing ? <form onSubmit={event => { event.preventDefault(); void change(name, account.isArchived, version) }}>
       <label>Название счёта<input value={name} required maxLength={100} onChange={event => setName(event.target.value)} /></label>
@@ -70,6 +72,7 @@ export function AccountsPage() {
         <Link className="ghost-button link-button" to="/transactions">Операции</Link>
         <Link className="ghost-button link-button" to="/categories">Категории</Link></nav>
     </header>
+    <CurrencySelector />
     <section className="transactions-list-card"><h2>Новый счёт</h2>
       <p>Счета пока работают в вашей базовой валюте: {user?.baseCurrency}. Начальный остаток задаётся при создании; дальнейшие изменения записывайте операциями.</p>
       {error && <div className="notice error" role="alert">{error}</div>}

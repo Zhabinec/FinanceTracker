@@ -17,8 +17,8 @@ export async function login(email: string, password: string) {
   return getCurrentUser()
 }
 
-export async function register(email: string, password: string, baseCurrency: string) {
-  await http.post('/auth/register', { email, password, baseCurrency })
+export async function register(email: string, password: string) {
+  await http.post('/auth/register', { email, password })
 }
 
 export function restoreSession() {

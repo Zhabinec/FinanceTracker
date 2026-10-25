@@ -123,3 +123,7 @@ button:disabled { opacity:.6; cursor:wait; }
 .account-card .category-actions { flex-wrap: wrap; }
 .archive-toggle { display: flex; align-items: center; gap: 8px; }
 .archive-toggle input { width: auto; }
+.currency-display { margin-top: 24px; padding: 20px 24px; border: 1px solid #dce1d8; border-radius: 16px; background: #fff; }
+.currency-display label { max-width: 250px; margin-bottom: 10px; }
+.currency-display p { margin: 0; line-height: 1.5; }
+.currency-display .text-button { margin-left: 10px; }

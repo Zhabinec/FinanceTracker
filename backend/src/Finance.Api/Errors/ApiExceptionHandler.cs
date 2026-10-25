@@ -19,6 +19,8 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             problem = new ProblemDetails { Status = 400, Title = exception.Message };
         else if (exception is UnauthorizedAccessException)
             problem = new ProblemDetails { Status = 401, Title = "Authentication is required." };
+        else if (exception is Finance.Application.Currencies.ExchangeRatesUnavailableException)
+            problem = new ProblemDetails { Status = 503, Title = exception.Message };
         else
         {
             logger.LogError(exception, "Request {Method} {Path} failed. Trace {TraceId}",

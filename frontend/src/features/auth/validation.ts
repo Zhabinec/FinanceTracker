@@ -7,7 +7,6 @@ export const loginSchema = z.object({
 
 export const registerSchema = loginSchema.extend({
   password: z.string().min(8, 'Пароль должен содержать минимум 8 символов.').max(128, 'Пароль не должен превышать 128 символов.'),
-  baseCurrency: z.enum(['RUB', 'USD', 'EUR']),
 })
 
 export type LoginForm = z.infer<typeof loginSchema>

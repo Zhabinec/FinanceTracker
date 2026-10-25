@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { getApiError } from '../../api/apiError'
-import { formatMoney, formatDate } from '../../shared/formatting'
+import { formatDate } from '../../shared/formatting'
+import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import type { Category } from '../categories/categoryApi'
 import type { MoneyAccount } from '../accounts/accountApi'
 import type { FinanceTransaction, TransactionInput } from './transactionApi'
@@ -24,6 +25,7 @@ export function TransactionRow({
   onUpdate: (transactionId: string, input: TransactionInput) => Promise<void>
   onDelete: (transactionId: string, version: string) => Promise<void>
 }) {
+  const display = useCurrencyDisplay()
   const [editing, setEditing] = useState(false)
   const [editingVersion, setEditingVersion] = useState(transaction.version)
   const [actionError, setActionError] = useState('')
@@ -101,7 +103,7 @@ export function TransactionRow({
               {category.name}{category.isActive ? '' : ' (неактивна)'}
             </option>)}
           </select>{errors.categoryId && <span className="field-error">{errors.categoryId.message}</span>}</label>
-          <label>Сумма<input inputMode="decimal" {...register('amount')} />
+          <label>Сумма ({currency})<input inputMode="decimal" {...register('amount')} />
             {errors.amount && <span className="field-error">{errors.amount.message}</span>}</label>
           <label>Дата<input type="date" {...register('occurredOn')} />
             {errors.occurredOn && <span className="field-error">{errors.occurredOn.message}</span>}</label>
@@ -116,7 +118,7 @@ export function TransactionRow({
     )
   }
 
-  const amount = formatMoney(transaction.amount, currency)
+  const amount = display.money(transaction.amount, currency)
   const date = formatDate(transaction.occurredOn)
 
   return (

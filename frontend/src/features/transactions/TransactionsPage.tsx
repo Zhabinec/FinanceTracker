@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAccounts } from '../accounts/accountApi'
+import { CurrencySelector } from '../currencies/CurrencySelector'
 import { getApiError } from '../../api/apiError'
 import { getCategories } from '../categories/categoryApi'
 import { useAuth } from '../auth/useAuth'
@@ -91,6 +92,7 @@ export function TransactionsPage() {
           }}>{leaving ? 'Выходим…' : 'Выйти'}</button>
         </nav>
       </header>
+      <CurrencySelector />
 
       <section className="transaction-create-card">
         <div><p className="eyebrow">Новая операция</p><h2>Запишите движение денег</h2>
@@ -111,7 +113,7 @@ export function TransactionsPage() {
             {activeCategories.map((category) =>
               <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>{errors.categoryId && <span className="field-error">{errors.categoryId.message}</span>}</label>
-          <label>Сумма<input inputMode="decimal" placeholder="0,00" {...register('amount')} />
+          <label>Сумма ({user?.baseCurrency ?? 'RUB'})<input inputMode="decimal" placeholder="0,00" {...register('amount')} />
             {errors.amount && <span className="field-error">{errors.amount.message}</span>}</label>
           <label>Дата<input type="date" {...register('occurredOn')} />
             {errors.occurredOn && <span className="field-error">{errors.occurredOn.message}</span>}</label>
