@@ -119,9 +119,9 @@ export function CategoriesPage() {
       </div>}
       {categoriesQuery.isSuccess && (
         <div className="category-grid">
-          <CategoryColumn title="Доходы" hint="Деньги приходят" type="Income" categories={categories}
-            busyId={busyCategoryId} onAction={runAction} onQuickAdd={setQuickCategory} />
           <CategoryColumn title="Расходы" hint="Деньги уходят" type="Expense" categories={categories}
+            busyId={busyCategoryId} onAction={runAction} onQuickAdd={setQuickCategory} />
+          <CategoryColumn title="Доходы" hint="Деньги приходят" type="Income" categories={categories}
             busyId={busyCategoryId} onAction={runAction} onQuickAdd={setQuickCategory} />
         </div>
       )}

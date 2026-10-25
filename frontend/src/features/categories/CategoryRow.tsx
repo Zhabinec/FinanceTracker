@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { Category } from './categoryApi'
 import type { CategoryAction } from './useCategories'
 import { categorySchema } from './validation'
@@ -17,6 +17,28 @@ export function CategoryRow({
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(category.name)
   const [nameError, setNameError] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const menuButton = useRef<HTMLButtonElement>(null)
+  const menuId = useId()
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const dismiss = (event: PointerEvent | FocusEvent) => {
+      if (event.target instanceof Node && !menuRef.current?.contains(event.target)) setMenuOpen(false)
+    }
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { setMenuOpen(false); menuButton.current?.focus() }
+    }
+    document.addEventListener('pointerdown', dismiss)
+    document.addEventListener('focusin', dismiss)
+    document.addEventListener('keydown', escape)
+    return () => {
+      document.removeEventListener('pointerdown', dismiss)
+      document.removeEventListener('focusin', dismiss)
+      document.removeEventListener('keydown', escape)
+    }
+  }, [menuOpen])
 
   const cancelEditing = () => {
     setName(category.name)
@@ -43,11 +65,11 @@ export function CategoryRow({
   }
 
   return (
-    <li className={`category-row ${category.isActive ? '' : 'inactive'}`}>
-      <div className="category-row-main">
-        <span className={`category-dot ${category.type.toLowerCase()}`} />
-        {editing ? (
-          <div className="rename-editor">
+    <li className={`category-row category-tile ${category.isActive ? '' : 'inactive'} ${menuOpen ? 'menu-open' : ''} ${editing ? 'is-editing' : ''}`}>
+      {!editing && category.isActive && <button type="button" className="category-tile-hitbox" disabled={busy}
+        aria-label={`Добавить ${category.type === 'Expense' ? 'расход' : 'доход'}: ${category.name}`}
+        onClick={() => { setMenuOpen(false); onQuickAdd(category) }} />}
+      {editing ? <div className="rename-editor">
             <input
               aria-label="Новое название"
               autoFocus
@@ -60,41 +82,39 @@ export function CategoryRow({
               }}
             />
             {nameError && <span className="field-error">{nameError}</span>}
-          </div>
-        ) : (
-          category.isActive ? <button type="button" className="category-quick-button" disabled={busy}
-            aria-label={`Добавить ${category.type === 'Expense' ? 'расход' : 'доход'}: ${category.name}`}
-            onClick={() => onQuickAdd(category)}><strong>{category.name}</strong>
-            <span className="status-label">+ {category.type === 'Expense' ? 'Расход' : 'Доход'}</span></button> :
-          <div><strong>{category.name}</strong><span className="status-label">Неактивна</span></div>
-        )}
-      </div>
-      <div className="category-actions">
-        {editing ? (
-          <>
+          <div className="category-rename-actions">
             <button type="button" className="text-button" disabled={busy}
               onClick={() => { void submitRename() }}>Сохранить</button>
             <button type="button" className="text-button muted-action"
               disabled={busy} onClick={cancelEditing}>Отмена</button>
-          </>
-        ) : (
-          <>
-            <button type="button" className="text-button" disabled={busy}
-              onClick={() => setEditing(true)}>Изменить</button>
+          </div>
+        </div> : <>
+          <div className="category-tile-content" aria-hidden={category.isActive ? true : undefined}>
+            <span className={`category-tile-icon ${category.type.toLowerCase()}`}>{category.type === 'Expense' ? '−' : '+'}</span>
+            <strong>{category.name}</strong>
+            <span className="status-label">{!category.isActive ? 'Неактивна' : category.type === 'Expense' ? 'Добавить расход' : 'Добавить доход'}</span>
+          </div>
+          <div className="category-tile-menu" ref={menuRef}>
+            <button type="button" className="category-menu-toggle" ref={menuButton} disabled={busy}
+              aria-label={`Настройки категории ${category.name}`} aria-expanded={menuOpen} aria-controls={menuId}
+              onClick={() => setMenuOpen(previous => !previous)}>⋯</button>
+            {menuOpen && <div className="category-menu-panel" id={menuId} role="group" aria-label="Действия с категорией">
+            <button type="button" disabled={busy}
+              onClick={() => { setName(category.name); setNameError(''); setMenuOpen(false); setEditing(true) }}>Переименовать</button>
             {category.isActive ? (
-              <button type="button" className="text-button danger-action" disabled={busy}
-                onClick={() => { void onAction({ kind: 'deactivate', categoryId: category.id }) }}>
+              <button type="button" className="danger-action" disabled={busy}
+                onClick={() => { setMenuOpen(false); void onAction({ kind: 'deactivate', categoryId: category.id }) }}>
                 Отключить
               </button>
             ) : (
-              <button type="button" className="text-button" disabled={busy}
-                onClick={() => { void onAction({ kind: 'restore', categoryId: category.id }) }}>
+              <button type="button" disabled={busy}
+                onClick={() => { setMenuOpen(false); void onAction({ kind: 'restore', categoryId: category.id }) }}>
                 Восстановить
               </button>
             )}
-          </>
-        )}
-      </div>
+            </div>}
+          </div>
+        </>}
     </li>
   )
 }
