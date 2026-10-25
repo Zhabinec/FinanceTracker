@@ -32,6 +32,13 @@ public sealed class User
 
     public string PasswordHash { get; private set; } = string.Empty;
     public Guid SecurityStamp { get; private set; } = Guid.NewGuid();
+    public DateTimeOffset? EmailConfirmedAtUtc { get; private set; }
+
+    public void ConfirmEmail(DateTimeOffset nowUtc)
+    {
+        EnsureUtc(nowUtc, nameof(nowUtc));
+        EmailConfirmedAtUtc ??= nowUtc;
+    }
 
     public void ChangePassword(string passwordHash)
     {

@@ -78,7 +78,7 @@ public sealed class RegisterUserHandlerTests
         return new RegisterUserHandler(
             store,
             new FakePasswordHasher(),
-            new FakeClock());
+            new FakeClock(), new FakeEmailVerification());
     }
 
     private sealed class FakeUserRegistrationStore : IUserRegistrationStore
@@ -117,5 +117,10 @@ public sealed class RegisterUserHandlerTests
     private sealed class FakeClock : IClock
     {
         public DateTimeOffset UtcNow => RegistrationTime;
+    }
+    private sealed class FakeEmailVerification : Finance.Application.Auth.Verification.IEmailVerification
+    {
+        public Task RequestAsync(string? email, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task<bool> ConfirmAsync(string? token, CancellationToken cancellationToken) => Task.FromResult(false);
     }
 }

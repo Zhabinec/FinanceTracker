@@ -14,6 +14,19 @@ public sealed class LoginUserHandlerTests
         RegistrationTime.AddMinutes(15);
 
     [Fact]
+    public async Task HandleAsync_UnconfirmedEmail_DoesNotIssueTokens()
+    {
+        var user = User.Create("user@example.com", "hashed:correct-password", RegistrationTime, "RUB");
+        var handler = new LoginUserHandler(new FakeUserLoginStore(user), new FakePasswordHasher(),
+            new FakeAccessTokenProvider(), new FakeRefreshSessionStore(), new FakeRefreshTokenProtector(),
+            new FakeClock(), new RefreshTokenSettings(30));
+        var result = await handler.HandleAsync(new LoginUserCommand(user.Email, "correct-password"), CancellationToken.None);
+        Assert.Equal(LoginUserStatus.EmailNotConfirmed, result.Status);
+        Assert.Null(result.AccessToken);
+        Assert.Null(result.RefreshToken);
+    }
+
+    [Fact]
     public async Task HandleAsync_WithValidCredentials_ReturnsAccessToken()
     {
         var user = CreateUser();
@@ -69,11 +82,13 @@ public sealed class LoginUserHandlerTests
 
     private static User CreateUser()
     {
-        return User.Create(
+        var user = User.Create(
             "User@Example.com",
             "hashed:correct-password",
             RegistrationTime,
             "RUB");
+        user.ConfirmEmail(RegistrationTime);
+        return user;
     }
 
     private sealed class FakeUserLoginStore(User? user) : IUserLoginStore

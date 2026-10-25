@@ -22,6 +22,8 @@ public sealed class FinanceApiTests(ApiFixture fixture) : IClassFixture<ApiFixtu
         var email = $"{Guid.NewGuid():N}@example.com";
         var registration = await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Test-password-123!", baseCurrency = "RUB" });
         Assert.Equal(HttpStatusCode.Created, registration.StatusCode);
+        var confirmationToken = Uri.UnescapeDataString(fixture.Emails.ConfirmationLinks[email].Split("#token=")[1]);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/confirm-email", new { token = confirmationToken })).StatusCode);
         var login = await client.PostAsJsonAsync("/api/auth/login", new { email, password = "Test-password-123!" });
         login.EnsureSuccessStatusCode();
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", (await Json(login)).GetProperty("accessToken").GetString());
@@ -43,6 +45,62 @@ public sealed class FinanceApiTests(ApiFixture fixture) : IClassFixture<ApiFixtu
         var response = await client.PostAsJsonAsync("/api/transactions", new { categoryId, amount, type, occurredOn, description = "Test" });
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         return await Json(response);
+    }
+
+    [Fact]
+    public async Task EmailConfirmation_IsRequired_OneTime_AndCannotUseResetToken()
+    {
+        using var client = fixture.Client();
+        var email = $"verification-{Guid.NewGuid():N}@example.com";
+        var credentials = new { email, password = "Test-password-123!" };
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/auth/register", new { email, credentials.password, baseCurrency = "RUB" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync("/api/auth/login", credentials)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", new { email, password = "wrong-password" })).StatusCode);
+        await client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
+        var resetToken = Uri.UnescapeDataString(fixture.Emails.Links[email].Split("#token=")[1]);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/confirm-email", new { token = resetToken })).StatusCode);
+        var token = Uri.UnescapeDataString(fixture.Emails.ConfirmationLinks[email].Split("#token=")[1]);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/reset-password", new { token, password = "Other-password-123!" })).StatusCode);
+        var results = await Task.WhenAll(client.PostAsJsonAsync("/api/auth/confirm-email", new { token }), client.PostAsJsonAsync("/api/auth/confirm-email", new { token }));
+        Assert.Single(results, response => response.StatusCode == HttpStatusCode.NoContent);
+        Assert.Single(results, response => response.StatusCode == HttpStatusCode.BadRequest);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/auth/login", credentials)).StatusCode);
+    }
+
+    [Fact]
+    public async Task EmailConfirmation_RejectsExpiredLink_AndSupportsResend()
+    {
+        using var client = fixture.Client();
+        var email = $"expired-{Guid.NewGuid():N}@example.com";
+        var response = await client.PostAsJsonAsync("/api/auth/register", new { email, password = "Test-password-123!", baseCurrency = "RUB" });
+        var userId = (await Json(response)).GetProperty("id").GetGuid();
+        var expired = Uri.UnescapeDataString(fixture.Emails.ConfirmationLinks[email].Split("#token=")[1]);
+        using var scope = fixture.App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+        await db.EmailConfirmationTokens.Where(item => item.UserId == userId)
+            .ExecuteUpdateAsync(update => update.SetProperty(item => item.ExpiresAtUtc, DateTimeOffset.UtcNow.AddMinutes(-1)));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/confirm-email", new { token = expired })).StatusCode);
+        var known = await client.PostAsJsonAsync("/api/auth/resend-confirmation", new { email });
+        var unknown = await client.PostAsJsonAsync("/api/auth/resend-confirmation", new { email = "missing@example.com" });
+        Assert.Equal(await known.Content.ReadAsStringAsync(), await unknown.Content.ReadAsStringAsync());
+        var token = Uri.UnescapeDataString(fixture.Emails.ConfirmationLinks[email].Split("#token=")[1]);
+        Assert.NotEqual(expired, token);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsJsonAsync("/api/auth/confirm-email", new { token })).StatusCode);
+    }
+
+    [Fact]
+    public async Task RecoveryRateLimits_DoNotShareQuotaBetweenActions_AndExplainWaitTime()
+    {
+        using var app = fixture.App.WithWebHostBuilder(builder => builder.UseSetting("Auth:RecoveryPermitLimit", "1"));
+        using var client = app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        Assert.Equal(HttpStatusCode.Accepted, (await client.PostAsJsonAsync("/api/auth/forgot-password", new { email = "missing@example.com" })).StatusCode);
+        var blocked = await client.PostAsJsonAsync("/api/auth/forgot-password", new { email = "missing@example.com" });
+        Assert.Equal(HttpStatusCode.TooManyRequests, blocked.StatusCode);
+        Assert.True(blocked.Headers.TryGetValues("Retry-After", out _));
+        Assert.Equal("application/problem+json", blocked.Content.Headers.ContentType?.MediaType);
+        Assert.True((await Json(blocked)).GetProperty("retryAfterSeconds").GetInt32() > 0);
+        // A rejected request-email action must not exhaust the separate password-reset quota.
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/reset-password", new { token = "invalid", password = "Valid-password-123!" })).StatusCode);
     }
 
     [Fact]

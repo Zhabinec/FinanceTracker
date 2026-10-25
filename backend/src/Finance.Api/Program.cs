@@ -65,6 +65,8 @@ builder.Services.AddScoped<Finance.Application.Dashboard.DashboardHandler>();
 builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
 builder.Services.AddScoped<IPasswordRecoveryStore, PasswordRecoveryStore>();
 builder.Services.AddScoped<PasswordRecoveryHandler>();
+builder.Services.AddScoped<Finance.Application.Auth.Verification.IEmailVerification, Finance.Application.Auth.Verification.EmailVerificationHandler>();
+builder.Services.AddScoped<Finance.Application.Auth.Verification.IEmailVerificationStore, EmailVerificationStore>();
 var recoveryUrl = builder.Configuration["Auth:FrontendUrl"] ?? "http://localhost:5173";
 if (!Uri.TryCreate(recoveryUrl, UriKind.Absolute, out var frontendUri) || frontendUri.Scheme is not ("https" or "http"))
     throw new InvalidOperationException("Auth:FrontendUrl must be an absolute HTTP(S) URL.");
@@ -73,12 +75,29 @@ builder.Services.AddSingleton(new RecoveryEmailOptions(
     builder.Configuration["Email:Provider"] ?? "Mailpit",
     builder.Configuration["Email:Endpoint"] ?? "http://localhost:8025/api/v1/send",
     builder.Configuration["Email:From"] ?? "finance@example.test", builder.Configuration["Email:ApiKey"]));
-builder.Services.AddHttpClient<IRecoveryEmailSender, RecoveryEmailSender>(http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddHttpClient<RecoveryEmailSender>(http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddScoped<IRecoveryEmailSender>(services => services.GetRequiredService<RecoveryEmailSender>());
+builder.Services.AddScoped<Finance.Application.Auth.Verification.IConfirmationEmailSender>(services => services.GetRequiredService<RecoveryEmailSender>());
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        var seconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+            ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)) : 900;
+        context.HttpContext.Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var problem = new Microsoft.AspNetCore.Mvc.ProblemDetails
+        {
+            Status = 429,
+            Title = $"Слишком много попыток. Повторите через {Math.Max(1, (int)Math.Ceiling(seconds / 60d))} мин."
+        };
+        problem.Extensions["retryAfterSeconds"] = seconds;
+        problem.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+        await context.HttpContext.Response.WriteAsJsonAsync(problem, options: (System.Text.Json.JsonSerializerOptions?)null,
+            contentType: "application/problem+json", cancellationToken: cancellationToken);
+    };
     options.AddPolicy("password-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
-        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+        $"{context.Request.Path.Value?.TrimEnd('/').ToLowerInvariant()}:{context.Connection.RemoteIpAddress}", _ => new FixedWindowRateLimiterOptions
         { PermitLimit = builder.Configuration.GetValue("Auth:RecoveryPermitLimit", 10), Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
 });
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
@@ -119,7 +138,7 @@ builder.Services
                 if (!Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var userId)) { context.Fail("Invalid subject."); return; }
                 var store = context.HttpContext.RequestServices.GetRequiredService<IUserProfileStore>();
                 var user = await store.FindByIdAsync(userId, context.HttpContext.RequestAborted);
-                if (user is null || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
+                if (user is null || user.EmailConfirmedAtUtc is null || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
                     context.Fail("Session is no longer valid.");
             }
         };

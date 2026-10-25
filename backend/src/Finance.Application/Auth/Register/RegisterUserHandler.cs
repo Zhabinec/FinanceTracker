@@ -7,7 +7,8 @@ namespace Finance.Application.Auth.Register;
 public sealed class RegisterUserHandler(
     IUserRegistrationStore userStore,
     IPasswordHasher passwordHasher,
-    IClock clock)
+    IClock clock,
+    Finance.Application.Auth.Verification.IEmailVerification emailVerification)
 {
     public async Task<RegisterUserResult> HandleAsync(
         RegisterUserCommand command,
@@ -36,6 +37,7 @@ public sealed class RegisterUserHandler(
             return RegisterUserResult.EmailTaken();
         }
 
+        await emailVerification.RequestAsync(user.Email, cancellationToken);
         return RegisterUserResult.Success(new RegisteredUserDto(
             user.Id,
             user.Email,

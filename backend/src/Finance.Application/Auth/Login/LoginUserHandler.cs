@@ -17,7 +17,7 @@ public sealed class LoginUserHandler(
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(command.Email) ||
-            string.IsNullOrEmpty(command.Password))
+            string.IsNullOrEmpty(command.Password) || command.Password.Length > 128)
         {
             return LoginUserResult.InvalidCredentials();
         }
@@ -38,6 +38,7 @@ public sealed class LoginUserHandler(
             return LoginUserResult.InvalidCredentials();
         }
 
+        if (user.EmailConfirmedAtUtc is null) return LoginUserResult.EmailNotConfirmed();
         var accessToken = accessTokenProvider.Create(user);
         var refreshToken = refreshTokenProtector.Generate();
         var nowUtc = clock.UtcNow;

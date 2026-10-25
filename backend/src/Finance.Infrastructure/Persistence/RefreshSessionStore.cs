@@ -32,7 +32,7 @@ public sealed class RefreshSessionStore(FinanceDbContext dbContext) : IRefreshSe
 
             var user = await dbContext.Users.AsNoTracking()
                 .SingleAsync(item => item.Id == current.UserId, cancellationToken);
-            if (current.SecurityStamp != user.SecurityStamp) return null;
+            if (current.SecurityStamp != user.SecurityStamp || user.EmailConfirmedAtUtc is null) return null;
             current.Revoke(nowUtc);
             dbContext.RefreshSessions.Add(RefreshSession.Create(
                 current.UserId, newTokenHash, nowUtc, newExpiresAtUtc, user.SecurityStamp));

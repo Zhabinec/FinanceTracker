@@ -5,6 +5,7 @@ using Finance.Application.Auth.Refresh;
 using Finance.Application.Auth.Logout;
 using Finance.Api.Security;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Finance.Api.Controllers;
 
@@ -18,6 +19,7 @@ public sealed class AuthController(
     RefreshCookieService refreshCookieService) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting("password-recovery")]
     [ProducesResponseType<RegisteredUserDto>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
@@ -69,6 +71,10 @@ public sealed class AuthController(
                 Status = StatusCodes.Status401Unauthorized
             });
         }
+
+        if (result.Status == LoginUserStatus.EmailNotConfirmed)
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            { Status = 403, Title = "Подтвердите email по ссылке из письма перед входом." });
 
         refreshCookieService.Write(Response, result.RefreshToken!,
             result.RefreshTokenExpiresAtUtc!.Value);

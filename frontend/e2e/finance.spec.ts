@@ -1,26 +1,53 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type APIRequestContext } from '@playwright/test'
 
 test.use({ timezoneId: 'America/Los_Angeles' })
+const generatedMailIds = new Set<string>()
 
-test('recover password using a delivered one-time email link', async ({ page, request }) => {
-  const email = `recovery-${Date.now()}@example.com`
-  const original = 'Original-password-123!'
-  await request.post('/api/auth/register', { data: { email, password: original, baseCurrency: 'RUB' } })
-  await page.goto('/login')
-  await page.getByRole('link', { name: 'Забыли пароль?' }).click()
-  await page.getByLabel('Email', { exact: true }).fill(email)
-  await page.getByRole('button', { name: 'Отправить ссылку' }).click()
-  await expect(page.getByRole('status')).toContainText('Если аккаунт существует')
+test.afterEach(async ({ request }) => {
+  // Never issue an empty-ID delete: Mailpit interprets that as deleting the entire inbox.
+  const ids = [...generatedMailIds]
+  generatedMailIds.clear()
+  if (!ids.length) return
+  const mailpit = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025'
+  expect((await request.delete(`${mailpit}/api/v1/messages`, { data: { IDs: ids } })).ok()).toBe(true)
+})
+
+async function accountMail(request: APIRequestContext, email: string, subject: string) {
   const mailpit = process.env.E2E_MAILPIT_URL ?? 'http://localhost:8025'
   let messageId = ''
   await expect.poll(async () => {
     const response = await request.get(`${mailpit}/api/v1/search`, { params: { query: `to:${email}` } })
     const result = await response.json()
-    messageId = result.messages?.[0]?.ID ?? ''
+    messageId = result.messages?.find((message: { Subject: string }) => message.Subject === subject)?.ID ?? ''
     return messageId
   }).not.toBe('')
   const message = await (await request.get(`${mailpit}/api/v1/message/${messageId}`)).json()
+  expect(message.To.some((recipient: { Address: string }) => recipient.Address === email)).toBe(true)
+  generatedMailIds.add(messageId)
+  return message
+}
+
+async function confirmTestAccount(request: APIRequestContext, email: string) {
+  const message = await accountMail(request, email, 'Подтверждение email Finance Tracker')
+  const token = new URL(message.Text.match(/https?:\/\/[^\s]+\/confirm-email#token=[^\s]+/)[0]).hash.slice('#token='.length)
+  expect((await request.post('/api/auth/confirm-email', { data: { token: decodeURIComponent(token) } })).status()).toBe(204)
+}
+
+test('recover password using a delivered one-time email link', async ({ page, request }) => {
+  const email = `recovery-${Date.now()}@example.com`
+  const original = 'Original-password-123!'
+  await request.post('/api/auth/register', { data: { email, password: original, baseCurrency: 'RUB' } })
+  await confirmTestAccount(request, email)
+  await page.goto('/login')
+  await page.getByRole('link', { name: 'Забыли пароль?' }).click()
+  await page.getByLabel('Email', { exact: true }).fill(email)
+  await page.getByRole('button', { name: 'Отправить ссылку' }).click()
+  await expect(page.getByRole('status')).toContainText('Если аккаунт существует')
+  const message = await accountMail(request, email, 'Восстановление пароля Finance Tracker')
+  expect(message.Text).toContain(email)
   const link = message.Text.match(/https?:\/\/[^\s]+\/reset-password#token=[^\s]+/)[0]
+  await page.goto('/reset-password#token=old-invalid-token')
+  // Same-document fragment navigation must replace the token used by the form.
   await page.goto(link)
   await page.getByLabel('Новый пароль', { exact: true }).fill('Changed-password-123!')
   await page.getByLabel('Повторите пароль', { exact: true }).fill('Changed-password-123!')
@@ -33,14 +60,61 @@ test('recover password using a delivered one-time email link', async ({ page, re
   await expect(page.getByRole('heading', { name: 'Обзор финансов' })).toBeVisible()
 })
 
-test('register, record expenses, filter history and review finances', async ({ page }) => {
+test('native clipboard preserves exact text and replaces selections across forms', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  for (const [path, label] of [
+    ['/login', 'Пароль'], ['/register', 'Пароль'], ['/reset-password#token=clipboard-test', 'Новый пароль'],
+  ]) {
+    await page.goto(path)
+    const input = page.getByLabel(label, { exact: true })
+    await page.evaluate(() => navigator.clipboard.writeText('12345678'))
+    await input.click()
+    await input.press('Control+V')
+    await expect(input).toHaveValue('12345678')
+    await input.press('Control+A')
+    await input.press('Control+V')
+    await expect(input).toHaveValue('12345678')
+    await input.fill('')
+    await page.keyboard.down('Control')
+    await page.keyboard.down('v')
+    await page.keyboard.down('v')
+    await page.keyboard.up('v')
+    await page.keyboard.up('Control')
+    await expect(input).toHaveValue('12345678')
+    await page.getByRole('button', { name: 'Показать пароль', exact: true }).first().click()
+    await expect(input).toHaveAttribute('type', 'text')
+    await input.press('Control+A')
+    await input.press('Control+C')
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('12345678')
+    await page.evaluate(() => navigator.clipboard.writeText('пароль + <>& 12345678'))
+    await input.press('Control+V')
+    await expect(input).toHaveValue('пароль + <>& 12345678')
+    const longText = 'a'.repeat(140)
+    await page.evaluate((text) => navigator.clipboard.writeText(text), longText)
+    await input.press('Control+A')
+    await input.press('Control+V')
+    await expect(input).toHaveValue(longText)
+  }
+})
+
+test('register, confirm email, record expenses, filter history and review finances', async ({ page, request }) => {
   const email = `e2e-${Date.now()}@example.com`
   const category = `Продукты ${Date.now()}`
   await page.goto('/register')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill('Browser-test-123!')
   await page.getByRole('button', { name: 'Зарегистрироваться' }).click()
-  await expect(page).toHaveURL(/\/login$/)
+  await expect(page).toHaveURL(/\/verify-email$/)
+  await expect(page.getByText(`Аккаунт создан для ${email}. Откройте письмо и подтвердите email.`)).toBeVisible()
+  const verificationMail = await accountMail(request, email, 'Подтверждение email Finance Tracker')
+  expect(verificationMail.Text).toContain(email)
+  // Follow the actual HTML email link, preserving the fragment secret.
+  await page.setContent(verificationMail.HTML)
+  await page.getByRole('link', { name: 'Подтвердить email', exact: true }).click()
+  await page.getByRole('button', { name: 'Подтвердить email', exact: true }).click()
+  await expect(page.getByRole('status')).toContainText('Email подтверждён')
+  await page.getByRole('link', { name: 'Войти', exact: true }).click()
+  await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill('Browser-test-123!')
   await page.getByRole('button', { name: 'Войти', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Обзор финансов' })).toBeVisible()

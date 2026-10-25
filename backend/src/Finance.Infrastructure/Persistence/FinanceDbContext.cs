@@ -10,6 +10,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<EmailConfirmationToken> EmailConfirmationTokens => Set<EmailConfirmationToken>();
 
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
 

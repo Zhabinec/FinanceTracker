@@ -109,3 +109,10 @@ button:disabled { opacity:.6; cursor:wait; }
 .dashboard-note { color: var(--muted); }
 .summary-list { list-style: none; padding: 0; }
 .summary-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid #e4e9ed; }
+.password-input { display: flex; align-items: center; position: relative; width: 100%; }
+.password-input input { width: 100%; padding-right: 90px; }
+.password-toggle { position: absolute; right: 10px; border: 0; background: transparent; color: var(--green); font-size: 12px; cursor: pointer; padding: 8px 4px; }
+.password-toggle:focus-visible { outline: 2px solid var(--green); border-radius: 4px; }
+.password-field { margin-bottom: 16px; } .password-field > label { margin-bottom: 8px; }
+.form-panel .form-hint { color: var(--muted); line-height: 1.5; margin-top: 16px; }
+.form-panel .form-hint a { color: var(--green); }

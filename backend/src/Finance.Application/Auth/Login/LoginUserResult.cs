@@ -3,7 +3,8 @@ namespace Finance.Application.Auth.Login;
 public enum LoginUserStatus
 {
     Success,
-    InvalidCredentials
+    InvalidCredentials,
+    EmailNotConfirmed
 }
 
 public sealed record LoginUserResult(
@@ -23,4 +24,6 @@ public sealed record LoginUserResult(
 
     public static LoginUserResult InvalidCredentials() =>
         new(LoginUserStatus.InvalidCredentials, null, null, null, null);
+    public static LoginUserResult EmailNotConfirmed() =>
+        new(LoginUserStatus.EmailNotConfirmed, null, null, null, null);
 }

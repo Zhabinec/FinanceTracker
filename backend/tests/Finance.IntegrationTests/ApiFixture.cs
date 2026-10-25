@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.PostgreSql;
 using Finance.Application.Auth.Recovery;
+using Finance.Application.Auth.Verification;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Collections.Concurrent;
@@ -48,14 +49,22 @@ public sealed class ApiFixture : IAsyncLifetime
             {
                 services.RemoveAll<IRecoveryEmailSender>();
                 services.AddSingleton<IRecoveryEmailSender>(emails);
+                services.RemoveAll<IConfirmationEmailSender>();
+                services.AddSingleton<IConfirmationEmailSender>(emails);
             });
         }
     }
 }
 
-public sealed class CaptureRecoveryEmailSender : IRecoveryEmailSender
+public sealed class CaptureRecoveryEmailSender : IRecoveryEmailSender, IConfirmationEmailSender
 {
     public ConcurrentDictionary<string, string> Links { get; } = new();
+    public ConcurrentDictionary<string, string> ConfirmationLinks { get; } = new();
+    public Task SendConfirmationAsync(string email, string link, CancellationToken cancellationToken)
+    {
+        ConfirmationLinks[email] = link;
+        return Task.CompletedTask;
+    }
     public Task SendAsync(string email, string link, CancellationToken cancellationToken)
     {
         Links[email] = link;
