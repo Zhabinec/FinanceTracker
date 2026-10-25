@@ -46,6 +46,10 @@ internal static class TransactionValidation
         {
             errors["occurredOn"] = ["Transaction date is required."];
         }
+        else if (occurredOn.Value.Year is < 1900 or > 9998)
+        {
+            errors["occurredOn"] = ["Transaction date must be between 1900 and 9998."];
+        }
 
         return errors;
     }

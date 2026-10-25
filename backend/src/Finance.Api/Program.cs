@@ -57,6 +57,8 @@ builder.Services.AddScoped<IUserLoginStore, UserLoginStore>();
 builder.Services.AddScoped<IUserProfileStore, UserProfileStore>();
 builder.Services.AddScoped<ICategoryStore, CategoryStore>();
 builder.Services.AddScoped<ITransactionStore, TransactionStore>();
+builder.Services.AddScoped<Finance.Application.Dashboard.IDashboardStore, DashboardStore>();
+builder.Services.AddScoped<Finance.Application.Dashboard.DashboardHandler>();
 builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
 builder.Services.AddSingleton<IClock, SystemClock>();

@@ -16,7 +16,10 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
 
   const createMutation = useMutation({
     mutationFn: transactionApi.createTransaction,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+    ]),
   })
 
   const actionMutation = useMutation({
@@ -27,7 +30,10 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
       }
       await transactionApi.deleteTransaction(action.transactionId)
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+    ]),
   })
 
   return {
