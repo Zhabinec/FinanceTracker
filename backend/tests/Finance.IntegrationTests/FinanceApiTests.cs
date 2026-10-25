@@ -219,4 +219,48 @@ public sealed class FinanceApiTests(ApiFixture fixture) : IClassFixture<ApiFixtu
         public Task<DashboardSnapshot> ReadAsync(Guid userId, DateTimeOffset fromUtc, DateTimeOffset toExclusiveUtc, CancellationToken cancellationToken) =>
             throw new InvalidOperationException("private infrastructure error");
     }
+
+    [Fact]
+    public async Task PasswordRecovery_UsesOneTimeLink_RevokesAllSessions_AndKeepsGenericResponses()
+    {
+        using var client = await User();
+        var me = await client.GetFromJsonAsync<JsonElement>("/api/users/me");
+        var email = me.GetProperty("email").GetString()!;
+        using var resetClient = fixture.Client();
+        var known = await resetClient.PostAsJsonAsync("/api/auth/forgot-password", new { email });
+        var unknown = await resetClient.PostAsJsonAsync("/api/auth/forgot-password", new { email = $"missing-{Guid.NewGuid()}@example.com" });
+        Assert.Equal(HttpStatusCode.Accepted, known.StatusCode);
+        Assert.Equal(await known.Content.ReadAsStringAsync(), await unknown.Content.ReadAsStringAsync());
+        var token = Uri.UnescapeDataString(fixture.Emails.Links[email].Split("#token=")[1]);
+        using (var scope = fixture.App.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+            Assert.DoesNotContain(await db.PasswordResetTokens.Select(item => item.TokenHash).ToArrayAsync(), hash => hash == token);
+        }
+        Assert.Equal(HttpStatusCode.BadRequest, (await resetClient.PostAsJsonAsync("/api/auth/reset-password", new { token, password = "short" })).StatusCode);
+        var results = await Task.WhenAll(
+            resetClient.PostAsJsonAsync("/api/auth/reset-password", new { token, password = "New-password-123!" }),
+            resetClient.PostAsJsonAsync("/api/auth/reset-password", new { token, password = "New-password-123!" }));
+        Assert.Single(results, response => response.StatusCode == HttpStatusCode.NoContent);
+        Assert.Single(results, response => response.StatusCode == HttpStatusCode.BadRequest);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/users/me")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/refresh", new { })).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await resetClient.PostAsJsonAsync("/api/auth/login", new { email, password = "Test-password-123!" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await resetClient.PostAsJsonAsync("/api/auth/login", new { email, password = "New-password-123!" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task PasswordRecovery_RejectsExpiredLinks()
+    {
+        using var client = await User();
+        var me = await client.GetFromJsonAsync<JsonElement>("/api/users/me");
+        var email = me.GetProperty("email").GetString()!;
+        await client.PostAsJsonAsync("/api/auth/forgot-password", new { email });
+        var token = Uri.UnescapeDataString(fixture.Emails.Links[email].Split("#token=")[1]);
+        using var scope = fixture.App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+        await db.PasswordResetTokens.Where(item => item.UserId == me.GetProperty("id").GetGuid())
+            .ExecuteUpdateAsync(update => update.SetProperty(item => item.ExpiresAtUtc, DateTimeOffset.UtcNow.AddMinutes(-1)));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/auth/reset-password", new { token, password = "New-password-123!" })).StatusCode);
+    }
 }

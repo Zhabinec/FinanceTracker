@@ -43,7 +43,7 @@ public sealed class LoginUserHandler(
         var nowUtc = clock.UtcNow;
         var refreshExpiresAtUtc = nowUtc.AddDays(refreshTokenSettings.LifetimeDays);
         var session = RefreshSession.Create(user.Id,
-            refreshTokenProtector.Hash(refreshToken), nowUtc, refreshExpiresAtUtc);
+            refreshTokenProtector.Hash(refreshToken), nowUtc, refreshExpiresAtUtc, user.SecurityStamp);
         await refreshSessionStore.AddAsync(session, cancellationToken);
 
         return LoginUserResult.Success(accessToken.Value, accessToken.ExpiresAtUtc,

@@ -30,6 +30,9 @@ services:
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env before starting the application}
       Http__RedirectToHttps: "false"
       Auth__SecureCookies: "false"
+      Auth__FrontendUrl: http://localhost:${FRONTEND_PORT:-5180}
+      Email__Provider: Mailpit
+      Email__Endpoint: http://mailpit:8025/api/v1/send
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,6 +63,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
     restart: unless-stopped
 
 volumes:

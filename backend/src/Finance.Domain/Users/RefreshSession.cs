@@ -18,13 +18,14 @@ public sealed class RefreshSession
 
     public Guid Id { get; private set; }
     public Guid UserId { get; private set; }
+    public Guid SecurityStamp { get; private set; }
     public string TokenHash { get; private set; } = string.Empty;
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset ExpiresAtUtc { get; private set; }
     public DateTimeOffset? RevokedAtUtc { get; private set; }
 
     public static RefreshSession Create(Guid userId, string tokenHash,
-        DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc)
+        DateTimeOffset createdAtUtc, DateTimeOffset expiresAtUtc, Guid securityStamp = default)
     {
         if (userId == Guid.Empty) throw new DomainException("User id is required.");
         if (tokenHash.Length != 64 || tokenHash.Any(character => !Uri.IsHexDigit(character)))
@@ -34,7 +35,7 @@ public sealed class RefreshSession
         if (expiresAtUtc <= createdAtUtc)
             throw new DomainException("Refresh session must expire after it is created.");
 
-        return new RefreshSession(Guid.NewGuid(), userId, tokenHash, createdAtUtc, expiresAtUtc);
+        return new RefreshSession(Guid.NewGuid(), userId, tokenHash, createdAtUtc, expiresAtUtc) { SecurityStamp = securityStamp };
     }
 
     public void Revoke(DateTimeOffset revokedAtUtc)

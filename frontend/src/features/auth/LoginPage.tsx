@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { AuthLayout } from './AuthLayout'
 import { useAuth } from './useAuth'
 import { getApiError } from '../../api/apiError'
@@ -43,6 +44,7 @@ export function LoginPage() {
         {errors.password && <span className="field-error">{errors.password.message}</span>}
         <button className="primary-button" disabled={isSubmitting}>{isSubmitting ? 'Входим…' : 'Войти'}</button>
       </form>
+      <p><Link to="/forgot-password">Забыли пароль?</Link></p>
     </AuthLayout>
   )
 }

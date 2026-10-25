@@ -31,6 +31,15 @@ public sealed class User
     public string NormalizedEmail { get; private set; } = string.Empty;
 
     public string PasswordHash { get; private set; } = string.Empty;
+    public Guid SecurityStamp { get; private set; } = Guid.NewGuid();
+
+    public void ChangePassword(string passwordHash)
+    {
+        if (string.IsNullOrWhiteSpace(passwordHash) || passwordHash.Length > 500)
+            throw new DomainException("A valid password hash is required.");
+        PasswordHash = passwordHash;
+        SecurityStamp = Guid.NewGuid();
+    }
 
     public DateTimeOffset RegisteredAtUtc { get; private set; }
 

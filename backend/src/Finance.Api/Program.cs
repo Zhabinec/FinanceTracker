@@ -5,6 +5,9 @@ using Finance.Api.HealthChecks;
 using Finance.Api.Security;
 using Finance.Application.Abstractions;
 using Finance.Application.Auth.Login;
+using Finance.Application.Auth.Recovery;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Finance.Application.Auth.Register;
 using Finance.Application.Auth.Refresh;
 using Finance.Application.Auth.Logout;
@@ -60,6 +63,24 @@ builder.Services.AddScoped<ITransactionStore, TransactionStore>();
 builder.Services.AddScoped<Finance.Application.Dashboard.IDashboardStore, DashboardStore>();
 builder.Services.AddScoped<Finance.Application.Dashboard.DashboardHandler>();
 builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
+builder.Services.AddScoped<IPasswordRecoveryStore, PasswordRecoveryStore>();
+builder.Services.AddScoped<PasswordRecoveryHandler>();
+var recoveryUrl = builder.Configuration["Auth:FrontendUrl"] ?? "http://localhost:5173";
+if (!Uri.TryCreate(recoveryUrl, UriKind.Absolute, out var frontendUri) || frontendUri.Scheme is not ("https" or "http"))
+    throw new InvalidOperationException("Auth:FrontendUrl must be an absolute HTTP(S) URL.");
+builder.Services.AddSingleton(new PasswordRecoverySettings(recoveryUrl));
+builder.Services.AddSingleton(new RecoveryEmailOptions(
+    builder.Configuration["Email:Provider"] ?? "Mailpit",
+    builder.Configuration["Email:Endpoint"] ?? "http://localhost:8025/api/v1/send",
+    builder.Configuration["Email:From"] ?? "finance@example.test", builder.Configuration["Email:ApiKey"]));
+builder.Services.AddHttpClient<IRecoveryEmailSender, RecoveryEmailSender>(http => http.Timeout = TimeSpan.FromSeconds(10));
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("password-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = builder.Configuration.GetValue("Auth:RecoveryPermitLimit", 10), Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
+});
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddHttpContextAccessor();
@@ -91,6 +112,17 @@ builder.Services
     .AddJwtBearer(options =>
     {
         options.MapInboundClaims = false;
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async context =>
+            {
+                if (!Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var userId)) { context.Fail("Invalid subject."); return; }
+                var store = context.HttpContext.RequestServices.GetRequiredService<IUserProfileStore>();
+                var user = await store.FindByIdAsync(userId, context.HttpContext.RequestAborted);
+                if (user is null || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
+                    context.Fail("Session is no longer valid.");
+            }
+        };
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -143,6 +175,7 @@ if (app.Environment.IsDevelopment())
 if (builder.Configuration.GetValue("Http:RedirectToHttps", true)) app.UseHttpsRedirection();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 
 app.MapControllers();

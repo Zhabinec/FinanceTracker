@@ -114,6 +114,14 @@ GitHub Actions запускает backend build/tests, frontend tests/lint/build
 
 Суммы в ответах — строки, например `"123.45"`, чтобы сохранить точность в JavaScript. В БД — `numeric(18,2)`, в C# — `decimal`. `occurredOn` — календарная дата по Москве; техническое время хранится в UTC. Для изменения передайте `version`; устаревшая версия даёт `409`, после чего нужно перечитать запись. Удаление также требует версии.
 
-Access token хранится в памяти браузера, refresh token — в HttpOnly cookie. В БД хранится хеш refresh token. Выход отзывает refresh token; уже выданный access token действует до своего срока истечения (по умолчанию 15 минут).
+Access token хранится в памяти браузера, refresh token — в HttpOnly cookie. В БД хранятся хеши refresh- и reset-токенов. Обычный выход отзывает refresh token; сброс пароля меняет security stamp и немедленно отзывает все старые access- и refresh-токены.
+
+## Восстановление пароля
+
+На странице входа доступна ссылка «Забыли пароль?». Локальный Compose доставляет письма в Mailpit: http://localhost:8025. Это тестовый почтовый ящик, внешним адресатам письма не отправляются. Ссылка действует 30 минут, используется один раз и передаёт токен во fragment URL, чтобы он не попадал в HTTP access logs.
+
+Endpoints: `POST /api/auth/forgot-password` (`email`) и `POST /api/auth/reset-password` (`token`, `password`). Запрос восстановления возвращает одинаковое сообщение для известного и неизвестного email и ограничен по частоте. При недоступном почтовом сервисе сервер пишет безопасную ошибку доставки, а клиент по-прежнему получает общее сообщение.
+
+Внешняя почта: настройте `Auth__FrontendUrl` на публичный HTTPS URL, `Email__Provider=Resend`, `Email__Endpoint=https://api.resend.com/emails`, `Email__From` на подтверждённый адрес/домен и `Email__ApiKey` через секреты окружения. Адаптер использует HTTP API без SDK; фактическая внешняя доставка требует аккаунта и настройки домена у провайдера. [API Resend](https://resend.com/docs/api-reference/emails/send-email).
 
 Разбор решений и путь запроса: [docs/architecture.md](docs/architecture.md).
