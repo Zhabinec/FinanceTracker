@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: finance
       POSTGRES_PASSWORD: finance_dev
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - finance_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,6 +17,50 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  migrate:
+    image: finance-tracker-api:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["--Database:MigrateOnly=true"]
+    environment: &api-environment
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=finance_tracker;Username=finance;Password=finance_dev
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set JWT_SIGNING_KEY in .env before starting the application}
+      Http__RedirectToHttps: "false"
+      Auth__SecureCookies: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: finance-tracker-api:local
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5180}:80"
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
 
 volumes:
   finance_postgres_data:

@@ -114,6 +114,24 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<Finance.Api.Errors.ApiExceptionHandler>();
 
 var app = builder.Build();
+if (builder.Configuration.GetValue<bool>("Database:MigrateOnly"))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<FinanceDbContext>().Database.MigrateAsync();
+    return;
+}
+
+app.Use(async (context, next) =>
+{
+    var started = System.Diagnostics.Stopwatch.GetTimestamp();
+    try { await next(context); }
+    finally
+    {
+        app.Logger.LogInformation("HTTP {Method} {Path} returned {StatusCode} in {ElapsedMs} ms. Trace {TraceId}",
+            context.Request.Method, context.Request.Path, context.Response.StatusCode,
+            System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds, context.TraceIdentifier);
+    }
+});
 app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
@@ -122,7 +140,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+if (builder.Configuration.GetValue("Http:RedirectToHttps", true)) app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();

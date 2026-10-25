@@ -1,6 +1,6 @@
 namespace Finance.Api.Security;
 
-public sealed class RefreshCookieService(IWebHostEnvironment environment)
+public sealed class RefreshCookieService(IWebHostEnvironment environment, IConfiguration configuration)
 {
     public const string CookieName = "finance.refresh_token";
 
@@ -19,7 +19,7 @@ public sealed class RefreshCookieService(IWebHostEnvironment environment)
     private CookieOptions CreateOptions(DateTimeOffset expiresAtUtc) => new()
     {
         HttpOnly = true,
-        Secure = !environment.IsDevelopment(),
+        Secure = configuration.GetValue<bool?>("Auth:SecureCookies") ?? !environment.IsDevelopment(),
         SameSite = SameSiteMode.Strict,
         Path = "/api/auth",
         Expires = expiresAtUtc,
