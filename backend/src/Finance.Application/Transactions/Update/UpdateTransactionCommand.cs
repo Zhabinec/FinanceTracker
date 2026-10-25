@@ -9,4 +9,5 @@ public sealed record UpdateTransactionCommand(
     decimal Amount,
     string? Description,
     DateOnly? OccurredOn,
-    Guid? Version = null);
+    Guid? Version = null,
+    Guid? AccountId = null);

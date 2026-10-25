@@ -3,12 +3,14 @@ import { useForm, useWatch } from 'react-hook-form'
 import { getApiError } from '../../api/apiError'
 import { formatMoney, formatDate } from '../../shared/formatting'
 import type { Category } from '../categories/categoryApi'
+import type { MoneyAccount } from '../accounts/accountApi'
 import type { FinanceTransaction, TransactionInput } from './transactionApi'
 import { toTransactionInput, transactionSchema, type TransactionForm } from './validation'
 
 export function TransactionRow({
   transaction,
   categories,
+  accounts,
   currency,
   busy,
   onUpdate,
@@ -16,6 +18,7 @@ export function TransactionRow({
 }: {
   transaction: FinanceTransaction
   categories: Category[]
+  accounts: MoneyAccount[]
   currency: string
   busy: boolean
   onUpdate: (transactionId: string, input: TransactionInput) => Promise<void>
@@ -27,6 +30,7 @@ export function TransactionRow({
   const { register, handleSubmit, control, setValue, setError, reset, formState: { errors } } =
     useForm<TransactionForm>({
       defaultValues: {
+        accountId: transaction.accountId,
         categoryId: transaction.categoryId,
         type: transaction.type,
         amount: String(transaction.amount),
@@ -40,6 +44,7 @@ export function TransactionRow({
 
   const cancel = () => {
     reset({
+      accountId: transaction.accountId,
       categoryId: transaction.categoryId,
       type: transaction.type,
       amount: String(transaction.amount),
@@ -82,6 +87,9 @@ export function TransactionRow({
       <li className="transaction-row editing">
         <form className="transaction-edit-form" onSubmit={submit} noValidate>
           {actionError && <div className="notice error form-wide">{actionError}</div>}
+          <label>Счёт<select {...register('accountId')}>
+            {accounts.filter(a => !a.isArchived || a.id === transaction.accountId).map(a => <option key={a.id} value={a.id}>{a.name}{a.isArchived ? ' (архив)' : ''}</option>)}
+          </select>{errors.accountId && <span className="field-error">{errors.accountId.message}</span>}</label>
           <label>Тип<select {...register('type')} onChange={(event) => {
             const type = event.target.value as TransactionForm['type']
             setValue('type', type)
@@ -118,7 +126,7 @@ export function TransactionRow({
           {transaction.type === 'Income' ? '+' : '−'}
         </span>
         <div><strong>{transaction.categoryName}</strong>
-          <span>{transaction.description || 'Без описания'} · {date}</span></div>
+          <span>{accounts.find(a => a.id === transaction.accountId)?.name ?? 'Счёт'} · {transaction.description || 'Без описания'} · {date}</span></div>
       </div>
       <strong className={`transaction-amount ${transaction.type.toLowerCase()}`}>
         {transaction.type === 'Income' ? '+' : '−'}{amount}

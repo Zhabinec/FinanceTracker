@@ -5,7 +5,8 @@ namespace Finance.Application.Transactions.Update;
 public sealed class UpdateTransactionHandler(
     ICurrentUser currentUser,
     ICategoryStore categoryStore,
-    ITransactionStore transactionStore)
+    ITransactionStore transactionStore,
+    Finance.Application.Accounts.IAccountStore accountStore)
 {
     public async Task<TransactionMutationResult> HandleAsync(
         UpdateTransactionCommand command,
@@ -62,6 +63,11 @@ public sealed class UpdateTransactionHandler(
             });
         }
 
+        var account = await accountStore.FindOwnedAsync(command.AccountId ?? transaction.AccountId, userId, cancellationToken);
+        if (account is null) return TransactionMutationResult.AccountNotFound();
+        if (account.IsArchived && account.Id != transaction.AccountId)
+            throw new Finance.Application.Common.ConflictException("Нельзя перенести операцию на архивный счёт.");
+        transaction.AssignAccount(account);
         transaction.Update(
             category,
             command.Type,

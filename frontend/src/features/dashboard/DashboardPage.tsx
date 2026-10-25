@@ -30,6 +30,7 @@ export function DashboardPage() {
     <header className="app-header"><div><p className="eyebrow">Finance Tracker</p><h1>Обзор финансов</h1><p>{user?.email}</p></div>
       <nav className="header-actions">
         <Link className="ghost-button link-button" to="/transactions">Операции</Link>
+        <Link className="ghost-button link-button" to="/accounts">Счета</Link>
         <Link className="ghost-button link-button" to="/categories">Категории</Link>
         <Link className="ghost-button link-button" to="/account">Аккаунт</Link>
         <button className="ghost-button" disabled={leaving} onClick={async () => { setLeaving(true); await signOut() }}>Выйти</button>

@@ -26,6 +26,7 @@ public sealed class TransactionStore(FinanceDbContext dbContext) : ITransactionS
             transactions = transactions.Where(item => item.OccurredAtUtc < end);
         }
         if (query.CategoryId is { } categoryId) transactions = transactions.Where(item => item.CategoryId == categoryId);
+        if (query.AccountId is { } accountId) transactions = transactions.Where(item => item.AccountId == accountId);
         if (query.Type is { } type) transactions = transactions.Where(item => item.Type == type);
         var total = await transactions.CountAsync(cancellationToken);
         var ordered = query.Sort switch
@@ -82,6 +83,19 @@ public sealed class TransactionStore(FinanceDbContext dbContext) : ITransactionS
                     .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
                 if (category is null || !category.IsActive)
                     throw new Finance.Application.Common.ConflictException("Category is no longer active. Choose another category.");
+            }
+            // Share-lock the selected account so archiving cannot race validation.
+            foreach (var entry in dbContext.ChangeTracker.Entries<FinanceTransaction>()
+                .Where(entry => entry.State is EntityState.Added or EntityState.Modified).OrderBy(entry => entry.Entity.AccountId))
+            {
+                if (entry.State == EntityState.Modified &&
+                    entry.Property(t => t.AccountId).OriginalValue == entry.Entity.AccountId) continue;
+                var accountId = entry.Entity.AccountId;
+                var account = await dbContext.Accounts
+                    .FromSqlInterpolated($"SELECT * FROM accounts WHERE \"Id\" = {accountId} FOR SHARE")
+                    .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+                if (account is null || account.UserId != entry.Entity.UserId || account.IsArchived)
+                    throw new Finance.Application.Common.ConflictException("Счёт больше не доступен для новых операций. Обновите список.");
             }
             await dbContext.SaveChangesAsync(cancellationToken);
             await write.CommitAsync(cancellationToken);

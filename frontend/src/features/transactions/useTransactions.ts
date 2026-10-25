@@ -19,6 +19,7 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
     onSuccess: () => Promise.all([
       queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
       queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['accounts'] }),
     ]),
   })
 
@@ -33,6 +34,7 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
     onSuccess: () => Promise.all([
       queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
       queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['accounts'] }),
     ]),
     onError: () => queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
   })

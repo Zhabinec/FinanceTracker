@@ -6,6 +6,7 @@ public enum TransactionMutationStatus
     InvalidInput,
     NotFound,
     CategoryNotFound,
+    AccountNotFound,
     CategoryInactive,
     Unauthorized
 }
@@ -27,6 +28,9 @@ public sealed record TransactionMutationResult(
 
     public static TransactionMutationResult CategoryNotFound() =>
         new(TransactionMutationStatus.CategoryNotFound, null, EmptyErrors);
+
+    public static TransactionMutationResult AccountNotFound() =>
+        new(TransactionMutationStatus.AccountNotFound, null, EmptyErrors);
 
     public static TransactionMutationResult CategoryInactive() =>
         new(TransactionMutationStatus.CategoryInactive, null, new Dictionary<string, string[]>

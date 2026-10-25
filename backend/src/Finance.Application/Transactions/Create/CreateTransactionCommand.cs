@@ -7,4 +7,5 @@ public sealed record CreateTransactionCommand(
     TransactionType Type,
     decimal Amount,
     string? Description,
-    DateOnly? OccurredOn);
+    DateOnly? OccurredOn,
+    Guid? AccountId = null);

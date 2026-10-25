@@ -13,6 +13,9 @@ public sealed class TransactionConfiguration : IEntityTypeConfiguration<FinanceT
         builder.ToTable("transactions");
 
         builder.HasKey(transaction => transaction.Id);
+        builder.HasOne<Finance.Domain.Accounts.Account>().WithMany()
+            .HasForeignKey(t => new { t.AccountId, t.UserId })
+            .HasPrincipalKey(a => new { a.Id, a.UserId }).OnDelete(DeleteBehavior.Restrict);
         builder.Property(transaction => transaction.Version).IsConcurrencyToken();
 
         builder.Property(transaction => transaction.Type)

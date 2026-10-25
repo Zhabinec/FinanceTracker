@@ -14,7 +14,7 @@ using Finance.Application.Dashboard;
 
 namespace Finance.IntegrationTests;
 
-public sealed class FinanceApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
+public sealed partial class FinanceApiTests(ApiFixture fixture) : IClassFixture<ApiFixture>
 {
     private async Task<HttpClient> User()
     {

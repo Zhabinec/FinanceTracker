@@ -3,6 +3,7 @@ import type { CategoryType } from '../categories/categoryApi'
 
 export type FinanceTransaction = {
   id: string
+  accountId: string
   categoryId: string
   categoryName: string
   type: CategoryType
@@ -14,6 +15,7 @@ export type FinanceTransaction = {
 }
 
 export type TransactionInput = {
+  accountId?: string
   categoryId: string
   type: CategoryType
   amount: string
@@ -23,7 +25,7 @@ export type TransactionInput = {
 }
 
 export type TransactionQuery = {
-  from?: string; to?: string; categoryId?: string; type?: CategoryType | ''
+  from?: string; to?: string; categoryId?: string; accountId?: string; type?: CategoryType | ''
   sort?: string; page: number; pageSize: number
 }
 export type TransactionPage = { items: FinanceTransaction[]; totalCount: number; page: number; pageSize: number }

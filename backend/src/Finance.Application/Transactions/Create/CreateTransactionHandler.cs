@@ -7,7 +7,8 @@ public sealed class CreateTransactionHandler(
     ICurrentUser currentUser,
     ICategoryStore categoryStore,
     ITransactionStore transactionStore,
-    IClock clock)
+    IClock clock,
+    Finance.Application.Accounts.IAccountStore accountStore)
 {
     public async Task<TransactionMutationResult> HandleAsync(
         CreateTransactionCommand command,
@@ -51,6 +52,10 @@ public sealed class CreateTransactionHandler(
             });
         }
 
+        var account = await accountStore.FindOwnedAsync(command.AccountId ?? userId, userId, cancellationToken);
+        if (account is null) return TransactionMutationResult.AccountNotFound();
+        if (account.IsArchived) throw new Finance.Application.Common.ConflictException("Архивный счёт не принимает новые операции.");
+
         var transaction = Transaction.Create(
             userId,
             category,
@@ -60,6 +65,7 @@ public sealed class CreateTransactionHandler(
             MoscowDate.ToUtc(command.OccurredOn!.Value),
             clock.UtcNow);
 
+        transaction.AssignAccount(account);
         transactionStore.Add(transaction);
         await transactionStore.SaveChangesAsync(cancellationToken);
 

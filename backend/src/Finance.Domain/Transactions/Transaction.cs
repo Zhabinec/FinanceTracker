@@ -24,6 +24,7 @@ public sealed class Transaction
     {
         Id = id;
         UserId = userId;
+        AccountId = userId;
         CategoryId = categoryId;
         Type = type;
         Amount = amount;
@@ -38,6 +39,16 @@ public sealed class Transaction
     public Guid UserId { get; private set; }
 
     public Guid CategoryId { get; private set; }
+    public Guid AccountId { get; private set; }
+
+    public void AssignAccount(Finance.Domain.Accounts.Account account)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+        if (account.UserId != UserId) throw new DomainException("Счёт принадлежит другому пользователю.");
+        if (account.IsArchived && account.Id != AccountId) throw new DomainException("Архивный счёт нельзя назначить операции.");
+        AccountId = account.Id;
+        Version = Guid.NewGuid();
+    }
 
     public TransactionType Type { get; private set; }
 

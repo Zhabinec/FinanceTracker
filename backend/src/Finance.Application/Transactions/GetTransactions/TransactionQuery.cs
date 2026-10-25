@@ -5,7 +5,7 @@ namespace Finance.Application.Transactions.GetTransactions;
 
 public sealed record TransactionQuery(
     DateOnly? From = null, DateOnly? To = null, Guid? CategoryId = null,
-    TransactionType? Type = null, string Sort = "dateDesc", int Page = 1, int PageSize = 20)
+    TransactionType? Type = null, string Sort = "dateDesc", int Page = 1, int PageSize = 20, Guid? AccountId = null)
 {
     public void Validate()
     {
@@ -14,6 +14,7 @@ public sealed record TransactionQuery(
         if (From?.Year is < 1900 or > 9998 || To?.Year is < 1900 or > 9998)
             errors["period"] = ["Dates must be between 1900 and 9998."];
         if (CategoryId == Guid.Empty) errors["categoryId"] = ["Invalid category identifier."];
+        if (AccountId == Guid.Empty) errors["accountId"] = ["Invalid account identifier."];
         if (Type.HasValue && !Enum.IsDefined(Type.Value)) errors["type"] = ["Invalid transaction type."];
         if (Sort is not ("dateDesc" or "dateAsc" or "amountDesc" or "amountAsc"))
             errors["sort"] = ["Unsupported sort order."];

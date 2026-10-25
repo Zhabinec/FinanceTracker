@@ -9,6 +9,7 @@ function fitsDatabaseAmount(value: string) {
 }
 
 export const transactionSchema = z.object({
+  accountId: z.string().min(1, 'Выберите счёт.'),
   categoryId: z.string().min(1, 'Выберите категорию.'),
   type: z.enum(['Income', 'Expense']),
   amount: z.string()
@@ -25,6 +26,7 @@ export type TransactionForm = z.infer<typeof transactionSchema>
 
 export function toTransactionInput(form: TransactionForm): TransactionInput {
   return {
+    accountId: form.accountId,
     categoryId: form.categoryId,
     type: form.type,
     amount: form.amount.replace(',', '.'),

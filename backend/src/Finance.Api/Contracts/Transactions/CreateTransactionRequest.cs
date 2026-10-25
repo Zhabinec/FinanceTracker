@@ -8,4 +8,5 @@ public sealed record CreateTransactionRequest(
     TransactionType Type,
     [property: JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] decimal Amount,
     string? Description,
-    DateOnly? OccurredOn);
+    DateOnly? OccurredOn,
+    Guid? AccountId = null);

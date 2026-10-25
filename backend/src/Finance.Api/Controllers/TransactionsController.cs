@@ -42,7 +42,8 @@ public sealed class TransactionsController(
                 request.Type,
                 request.Amount,
                 request.Description,
-                request.OccurredOn),
+                request.OccurredOn,
+                request.AccountId),
             cancellationToken);
 
         return ToActionResult(result, StatusCodes.Status201Created);
@@ -66,7 +67,8 @@ public sealed class TransactionsController(
                 request.Amount,
                 request.Description,
                 request.OccurredOn,
-                request.Version),
+                request.Version,
+                request.AccountId),
             cancellationToken);
 
         return ToActionResult(result, StatusCodes.Status200OK);
@@ -113,6 +115,8 @@ public sealed class TransactionsController(
                 NotFoundProblem("Transaction was not found."),
             TransactionMutationStatus.CategoryNotFound =>
                 NotFoundProblem("Category was not found."),
+            TransactionMutationStatus.AccountNotFound =>
+                NotFoundProblem("Счёт не найден."),
             TransactionMutationStatus.CategoryInactive =>
                 Conflict(new ProblemDetails
                 {

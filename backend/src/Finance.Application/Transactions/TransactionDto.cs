@@ -14,7 +14,8 @@ public sealed record TransactionDto(
     string? Description,
     DateOnly OccurredOn,
     DateTimeOffset CreatedAtUtc,
-    Guid Version)
+    Guid Version,
+    Guid AccountId)
 {
     public static TransactionDto From(
         FinanceTransaction transaction,
@@ -28,7 +29,8 @@ public sealed record TransactionDto(
             transaction.Description,
             MoscowDate.FromUtc(transaction.OccurredAtUtc),
             transaction.CreatedAtUtc,
-            transaction.Version);
+            transaction.Version,
+            transaction.AccountId);
 
     public static TransactionDto From(TransactionRecord record) =>
         From(record.Transaction, record.CategoryName);

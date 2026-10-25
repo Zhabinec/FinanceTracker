@@ -19,6 +19,8 @@ public sealed class UserRegistrationStore(FinanceDbContext dbContext) : IUserReg
     public async Task<bool> TryAddAsync(User user, CancellationToken cancellationToken)
     {
         dbContext.Users.Add(user);
+        var account = Finance.Domain.Accounts.Account.CreatePrimary(user.Id, user.BaseCurrency);
+        dbContext.Accounts.Add(account);
 
         try
         {
@@ -33,6 +35,7 @@ public sealed class UserRegistrationStore(FinanceDbContext dbContext) : IUserReg
             })
         {
             dbContext.Entry(user).State = EntityState.Detached;
+            dbContext.Entry(account).State = EntityState.Detached;
             return false;
         }
     }

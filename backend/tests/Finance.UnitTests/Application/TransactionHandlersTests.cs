@@ -25,7 +25,7 @@ public sealed class TransactionHandlersTests
             new FakeCurrentUser(userId),
             new FakeCategoryStore(category),
             transactionStore,
-            new FakeClock(UtcNow));
+            new FakeClock(UtcNow), new FakeAccountStore());
 
         var result = await handler.HandleAsync(
             new CreateTransactionCommand(
@@ -53,7 +53,7 @@ public sealed class TransactionHandlersTests
             new FakeCurrentUser(Guid.NewGuid()),
             new FakeCategoryStore(category),
             transactionStore,
-            new FakeClock(UtcNow));
+            new FakeClock(UtcNow), new FakeAccountStore());
 
         var result = await handler.HandleAsync(
             new CreateTransactionCommand(
@@ -78,7 +78,7 @@ public sealed class TransactionHandlersTests
             new FakeCurrentUser(userId),
             new FakeCategoryStore(category),
             new FakeTransactionStore(),
-            new FakeClock(UtcNow));
+            new FakeClock(UtcNow), new FakeAccountStore());
 
         var result = await handler.HandleAsync(
             new CreateTransactionCommand(
@@ -101,7 +101,7 @@ public sealed class TransactionHandlersTests
             new FakeCurrentUser(userId),
             new FakeCategoryStore(category),
             new FakeTransactionStore(),
-            new FakeClock(UtcNow));
+            new FakeClock(UtcNow), new FakeAccountStore());
 
         var result = await handler.HandleAsync(
             new CreateTransactionCommand(
@@ -155,7 +155,7 @@ public sealed class TransactionHandlersTests
         var handler = new UpdateTransactionHandler(
             new FakeCurrentUser(Guid.NewGuid()),
             new FakeCategoryStore(category),
-            new FakeTransactionStore(transaction));
+            new FakeTransactionStore(transaction), new FakeAccountStore());
 
         var result = await handler.HandleAsync(
             new UpdateTransactionCommand(
@@ -189,7 +189,7 @@ public sealed class TransactionHandlersTests
         var handler = new UpdateTransactionHandler(
             new FakeCurrentUser(userId),
             new FakeCategoryStore(category),
-            store);
+            store, new FakeAccountStore());
 
         var result = await handler.HandleAsync(
             new UpdateTransactionCommand(
@@ -229,6 +229,15 @@ public sealed class TransactionHandlersTests
         Assert.Equal(DeleteTransactionStatus.NotFound, result);
         Assert.Single(store.Transactions);
         Assert.Equal(0, store.Saves);
+    }
+
+    private sealed class FakeAccountStore : Finance.Application.Accounts.IAccountStore
+    {
+        public Task<Finance.Domain.Accounts.Account?> FindOwnedAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>
+            Task.FromResult(id == userId ? Finance.Domain.Accounts.Account.CreatePrimary(userId, "RUB") : null);
+        public Task<IReadOnlyList<Finance.Application.Accounts.AccountBalance>> ListAsync(Guid userId, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public void Add(Finance.Domain.Accounts.Account account) => throw new NotSupportedException();
+        public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class FakeCurrentUser(Guid? userId) : ICurrentUser

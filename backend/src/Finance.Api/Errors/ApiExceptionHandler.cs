@@ -15,6 +15,10 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             { Status = 400, Title = validation.Message };
         else if (exception is ConflictException)
             problem = new ProblemDetails { Status = 409, Title = exception.Message };
+        else if (exception is Finance.Domain.Common.DomainException)
+            problem = new ProblemDetails { Status = 400, Title = exception.Message };
+        else if (exception is UnauthorizedAccessException)
+            problem = new ProblemDetails { Status = 401, Title = "Authentication is required." };
         else
         {
             logger.LogError(exception, "Request {Method} {Path} failed. Trace {TraceId}",
