@@ -5,6 +5,9 @@ namespace Finance.Domain.Transactions;
 
 public sealed class Transaction
 {
+    public const int MaxDescriptionLength = 500;
+    public const decimal MaxAmount = 9_999_999_999_999_999.99m;
+
     private Transaction()
     {
     }
@@ -67,6 +70,29 @@ public sealed class Transaction
             createdAtUtc);
     }
 
+    public void Update(
+        Category category,
+        TransactionType type,
+        decimal amount,
+        string? description,
+        DateTimeOffset occurredAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(category);
+
+        ValidateCommon(UserId, category, type, amount, description, occurredAtUtc);
+
+        if (!category.IsActive && category.Id != CategoryId)
+        {
+            throw new DomainException("An inactive category cannot be assigned to a transaction.");
+        }
+
+        CategoryId = category.Id;
+        Type = type;
+        Amount = amount;
+        Description = NormalizeDescription(description);
+        OccurredAtUtc = occurredAtUtc;
+    }
+
     private static void Validate(
         Guid userId,
         Category category,
@@ -75,6 +101,25 @@ public sealed class Transaction
         string? description,
         DateTimeOffset occurredAtUtc,
         DateTimeOffset createdAtUtc)
+    {
+        ArgumentNullException.ThrowIfNull(category);
+
+        if (!category.IsActive)
+        {
+            throw new DomainException("An inactive category cannot be used for a new transaction.");
+        }
+
+        ValidateCommon(userId, category, type, amount, description, occurredAtUtc);
+        EnsureUtc(createdAtUtc, nameof(createdAtUtc));
+    }
+
+    private static void ValidateCommon(
+        Guid userId,
+        Category category,
+        TransactionType type,
+        decimal amount,
+        string? description,
+        DateTimeOffset occurredAtUtc)
     {
         if (userId == Guid.Empty)
         {
@@ -86,11 +131,6 @@ public sealed class Transaction
         if (category.UserId != userId)
         {
             throw new DomainException("The category belongs to another user.");
-        }
-
-        if (!category.IsActive)
-        {
-            throw new DomainException("An inactive category cannot be used for a new transaction.");
         }
 
         if (category.Type != type)
@@ -108,13 +148,17 @@ public sealed class Transaction
             throw new DomainException("Transaction amount cannot have more than two decimal places.");
         }
 
-        if (description?.Trim().Length > 500)
+        if (amount > MaxAmount)
         {
-            throw new DomainException("Transaction description cannot exceed 500 characters.");
+            throw new DomainException($"Transaction amount cannot exceed {MaxAmount}.");
+        }
+
+        if (description?.Trim().Length > MaxDescriptionLength)
+        {
+            throw new DomainException($"Transaction description cannot exceed {MaxDescriptionLength} characters.");
         }
 
         EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
-        EnsureUtc(createdAtUtc, nameof(createdAtUtc));
     }
 
     private static string? NormalizeDescription(string? description)

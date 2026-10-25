@@ -95,4 +95,71 @@ public sealed class TransactionTests
             UtcNow,
             UtcNow));
     }
+
+    [Fact]
+    public void Create_WithAmountLargerThanDatabasePrecision_Throws()
+    {
+        var userId = Guid.NewGuid();
+        var category = Category.Create(userId, "Salary", TransactionType.Income);
+
+        Assert.Throws<DomainException>(() => Transaction.Create(
+            userId,
+            category,
+            TransactionType.Income,
+            Transaction.MaxAmount + 0.01m,
+            null,
+            UtcNow,
+            UtcNow));
+    }
+
+    [Fact]
+    public void Update_WithSameNowInactiveCategory_UpdatesHistoricalTransaction()
+    {
+        var userId = Guid.NewGuid();
+        var category = Category.Create(userId, "Food", TransactionType.Expense);
+        var transaction = Transaction.Create(
+            userId,
+            category,
+            TransactionType.Expense,
+            100m,
+            null,
+            UtcNow,
+            UtcNow);
+        category.Deactivate();
+
+        transaction.Update(
+            category,
+            TransactionType.Expense,
+            120m,
+            " corrected ",
+            UtcNow.AddDays(1));
+
+        Assert.Equal(120m, transaction.Amount);
+        Assert.Equal("corrected", transaction.Description);
+        Assert.Equal(UtcNow.AddDays(1), transaction.OccurredAtUtc);
+    }
+
+    [Fact]
+    public void Update_WithAnotherInactiveCategory_Throws()
+    {
+        var userId = Guid.NewGuid();
+        var originalCategory = Category.Create(userId, "Food", TransactionType.Expense);
+        var inactiveCategory = Category.Create(userId, "Transport", TransactionType.Expense);
+        inactiveCategory.Deactivate();
+        var transaction = Transaction.Create(
+            userId,
+            originalCategory,
+            TransactionType.Expense,
+            100m,
+            null,
+            UtcNow,
+            UtcNow);
+
+        Assert.Throws<DomainException>(() => transaction.Update(
+            inactiveCategory,
+            TransactionType.Expense,
+            100m,
+            null,
+            UtcNow));
+    }
 }

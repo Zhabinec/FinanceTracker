@@ -10,6 +10,7 @@ export function AccountPage() {
     <main className="dashboard-shell">
       <header><div><p className="eyebrow">Finance Tracker</p><h1>Добрый день</h1></div>
         <nav className="header-actions">
+          <Link className="ghost-button link-button" to="/transactions">Операции</Link>
           <Link className="ghost-button link-button" to="/categories">Категории</Link>
           <button className="ghost-button" disabled={leaving} onClick={async () => { setLeaving(true); await signOut() }}>
             {leaving ? 'Выходим…' : 'Выйти'}
@@ -19,9 +20,9 @@ export function AccountPage() {
         <div><p className="muted">Аккаунт подключён</p><h2>{user?.email}</h2></div>
         <div className="currency-badge">{user?.baseCurrency}</div>
       </section>
-      <section className="empty-state"><span>↗</span><h2>Категории готовы к настройке</h2>
-        <p>Создайте направления доходов и расходов перед добавлением первых операций.</p>
-        <Link className="primary-button empty-state-link" to="/categories">Настроить категории</Link>
+      <section className="empty-state"><span>↗</span><h2>Управляйте движением денег</h2>
+        <p>Настройте категории, затем добавляйте доходы и расходы в журнал операций.</p>
+        <Link className="primary-button empty-state-link" to="/transactions">Открыть операции</Link>
       </section>
     </main>
   )
