@@ -68,6 +68,24 @@ public sealed class TransactionHandlersTests
         Assert.Empty(transactionStore.Transactions);
     }
 
+    [Theory]
+    [InlineData(20, 25)]
+    [InlineData(21, 26)]
+    public async Task Create_WithoutDate_UsesCreationDayInMoscow(int utcHour, int expectedDay)
+    {
+        var userId = Guid.NewGuid();
+        var now = new DateTimeOffset(2026, 10, 25, utcHour, 30, 0, TimeSpan.Zero);
+        var category = Category.Create(userId, "Продукты", TransactionType.Expense);
+        var store = new FakeTransactionStore();
+        var handler = new CreateTransactionHandler(new FakeCurrentUser(userId), new FakeCategoryStore(category),
+            store, new FakeClock(now), new FakeAccountStore());
+        var result = await handler.HandleAsync(new CreateTransactionCommand(category.Id, category.Type, 25m, "Чипсы", null), CancellationToken.None);
+        Assert.Equal(TransactionMutationStatus.Success, result.Status);
+        var saved = Assert.Single(store.Transactions);
+        Assert.Equal(now, saved.CreatedAtUtc);
+        Assert.Equal(new DateOnly(2026, 10, expectedDay), MoscowDate.FromUtc(saved.OccurredAtUtc));
+    }
+
     [Fact]
     public async Task Create_WithInactiveCategory_ReturnsConflictStatus()
     {

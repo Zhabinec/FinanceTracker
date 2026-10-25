@@ -7,10 +7,12 @@ export function CategoryRow({
   category,
   busy,
   onAction,
+  onQuickAdd,
 }: {
   category: Category
   busy: boolean
   onAction: (action: CategoryAction) => Promise<boolean>
+  onQuickAdd: (category: Category) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(category.name)
@@ -60,10 +62,11 @@ export function CategoryRow({
             {nameError && <span className="field-error">{nameError}</span>}
           </div>
         ) : (
-          <div>
-            <strong>{category.name}</strong>
-            {!category.isActive && <span className="status-label">Неактивна</span>}
-          </div>
+          category.isActive ? <button type="button" className="category-quick-button" disabled={busy}
+            aria-label={`Добавить ${category.type === 'Expense' ? 'расход' : 'доход'}: ${category.name}`}
+            onClick={() => onQuickAdd(category)}><strong>{category.name}</strong>
+            <span className="status-label">+ {category.type === 'Expense' ? 'Расход' : 'Доход'}</span></button> :
+          <div><strong>{category.name}</strong><span className="status-label">Неактивна</span></div>
         )}
       </div>
       <div className="category-actions">

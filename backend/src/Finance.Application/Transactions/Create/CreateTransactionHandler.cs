@@ -19,6 +19,8 @@ public sealed class CreateTransactionHandler(
             return TransactionMutationResult.Unauthorized();
         }
 
+        var createdAtUtc = clock.UtcNow;
+        command = command with { OccurredOn = command.OccurredOn ?? MoscowDate.FromUtc(createdAtUtc) };
         var errors = TransactionValidation.Validate(
             command.CategoryId,
             command.Type,
@@ -63,7 +65,7 @@ public sealed class CreateTransactionHandler(
             command.Amount,
             command.Description,
             MoscowDate.ToUtc(command.OccurredOn!.Value),
-            clock.UtcNow);
+            createdAtUtc);
 
         transaction.AssignAccount(account);
         transactionStore.Add(transaction);

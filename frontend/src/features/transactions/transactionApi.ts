@@ -20,7 +20,7 @@ export type TransactionInput = {
   type: CategoryType
   amount: string
   description: string | null
-  occurredOn: string
+  occurredOn?: string
   version?: string
 }
 

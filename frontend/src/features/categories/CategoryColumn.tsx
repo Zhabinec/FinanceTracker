@@ -9,6 +9,7 @@ export function CategoryColumn({
   categories,
   busyId,
   onAction,
+  onQuickAdd,
 }: {
   title: string
   hint: string
@@ -16,6 +17,7 @@ export function CategoryColumn({
   categories: Category[]
   busyId?: string
   onAction: (action: CategoryAction) => Promise<boolean>
+  onQuickAdd: (category: Category) => void
 }) {
   const visible = categories.filter((category) => category.type === type)
 
@@ -37,6 +39,7 @@ export function CategoryColumn({
               category={category}
               busy={busyId === category.id}
               onAction={onAction}
+              onQuickAdd={onQuickAdd}
             />
           ))}
         </ul>

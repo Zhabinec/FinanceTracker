@@ -6,12 +6,31 @@ import { useAuth } from '../auth/useAuth'
 import { CategoryColumn } from './CategoryColumn'
 import { useCategories, type CategoryAction } from './useCategories'
 import { categorySchema, type CategoryForm } from './validation'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useAccounts } from '../accounts/accountApi'
+import type { Category } from './categoryApi'
+import { QuickTransactionDialog } from './QuickTransactionDialog'
+import { deleteTransaction, type FinanceTransaction } from '../transactions/transactionApi'
+import { formatMoney } from '../../shared/formatting'
 
 export function CategoriesPage() {
   const { user, signOut } = useAuth()
   const [serverError, setServerError] = useState('')
   const [actionError, setActionError] = useState('')
   const [leaving, setLeaving] = useState(false)
+  const [quickCategory, setQuickCategory] = useState<Category | null>(null)
+  const [added, setAdded] = useState<FinanceTransaction | null>(null)
+  const [undoError, setUndoError] = useState('')
+  const [undone, setUndone] = useState(false)
+  const accountsQuery = useAccounts()
+  const queryClient = useQueryClient()
+  const undoMutation = useMutation({
+    mutationFn: (transaction: FinanceTransaction) => deleteTransaction(transaction.id, transaction.version),
+    onSuccess: async () => {
+      await Promise.all(['transactions', 'dashboard', 'accounts'].map(key => queryClient.invalidateQueries({ queryKey: [key] })))
+      setAdded(null); setUndone(true)
+    },
+  })
   const { register, handleSubmit, reset, setError, formState: { errors } } = useForm<CategoryForm>({
     defaultValues: { name: '', type: 'Expense' },
   })
@@ -64,9 +83,22 @@ export function CategoriesPage() {
         </nav>
       </header>
 
+      <p className="category-quick-hint">Нажмите на категорию, введите название и сумму — готово.</p>
+      {added && <div className="notice success quick-entry-notice" role="status">
+        Добавлено: {added.description} · {formatMoney(added.amount, user?.baseCurrency ?? 'RUB')}
+        <button type="button" className="text-button" disabled={undoMutation.isPending} onClick={async () => {
+          setUndoError('')
+          try { await undoMutation.mutateAsync(added) }
+          catch (error) { setUndoError(getApiError(error, 'Не удалось отменить добавление. Проверьте журнал операций.')) }
+        }}>{undoMutation.isPending ? 'Отменяем…' : 'Отменить добавление'}</button>
+        <Link to="/transactions">История операций</Link>
+      </div>}
+      {undone && <div className="notice success" role="status">Добавление отменено.</div>}
+      {undoError && <div className="notice error" role="alert">{undoError}</div>}
+      <details className="category-create-disclosure"><summary>Создать категорию</summary>
       <section className="category-create-card">
         <div><p className="eyebrow">Новая категория</p><h2>Добавьте направление денег</h2>
-          <p>Тип фиксируется при создании: так будущие операции не смогут поменять смысл задним числом.</p></div>
+          <p>Например, «Продукты» для расходов или «Зарплата» для доходов.</p></div>
         <form className="category-create-form" onSubmit={submit} noValidate>
           {serverError && <div className="notice error form-wide">{serverError}</div>}
           <label>Название<input placeholder="Например, Продукты" maxLength={100} {...register('name')} /></label>
@@ -78,6 +110,7 @@ export function CategoriesPage() {
           {errors.type && <span className="field-error form-wide">{errors.type.message}</span>}
         </form>
       </section>
+      </details>
 
       {actionError && <div className="notice error category-notice">{actionError}</div>}
       {categoriesQuery.isPending && <div className="category-loading">Загружаем категории…</div>}
@@ -87,11 +120,17 @@ export function CategoriesPage() {
       {categoriesQuery.isSuccess && (
         <div className="category-grid">
           <CategoryColumn title="Доходы" hint="Деньги приходят" type="Income" categories={categories}
-            busyId={busyCategoryId} onAction={runAction} />
+            busyId={busyCategoryId} onAction={runAction} onQuickAdd={setQuickCategory} />
           <CategoryColumn title="Расходы" hint="Деньги уходят" type="Expense" categories={categories}
-            busyId={busyCategoryId} onAction={runAction} />
+            busyId={busyCategoryId} onAction={runAction} onQuickAdd={setQuickCategory} />
         </div>
       )}
+      {quickCategory && user && <QuickTransactionDialog key={quickCategory.id} category={quickCategory}
+        userId={user.id} accounts={accountsQuery.data ?? []} accountsPending={accountsQuery.isPending} accountsError={accountsQuery.isError}
+        onRetryAccounts={() => { void accountsQuery.refetch() }}
+        onClose={() => setQuickCategory(null)} onSaved={transaction => {
+          setAdded(transaction); setUndone(false); setUndoError(''); setQuickCategory(null)
+        }} />}
     </main>
   )
 }
