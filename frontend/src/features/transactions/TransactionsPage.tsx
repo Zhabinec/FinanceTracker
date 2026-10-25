@@ -65,6 +65,8 @@ export function TransactionsPage() {
 
   const remove = async (transactionId: string, version: string) => {
     await actionMutation.mutateAsync({ kind: 'delete', transactionId, version })
+    if (transactionsQuery.data?.items.length === 1 && query.page > 1)
+      setQuery((previous) => ({ ...previous, page: previous.page - 1 }))
   }
 
   const categories = categoriesQuery.data ?? []
@@ -74,7 +76,7 @@ export function TransactionsPage() {
       <header className="app-header">
         <div><p className="eyebrow">Finance Tracker</p><h1>Операции</h1><p className="header-user">{user?.email}</p></div>
         <nav className="header-actions">
-          <Link className="ghost-button link-button" to="/">Аккаунт</Link>
+          <Link className="ghost-button link-button" to="/">Обзор</Link>
           <Link className="ghost-button link-button" to="/categories">Категории</Link>
           <button className="ghost-button" disabled={leaving} onClick={async () => {
             setLeaving(true)

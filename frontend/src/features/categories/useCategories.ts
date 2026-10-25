@@ -30,7 +30,11 @@ export function useCategories() {
         return categoryApi.deactivateCategory(action.categoryId)
       return categoryApi.restoreCategory(action.categoryId)
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: categoriesQueryKey }),
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: categoriesQueryKey }),
+      queryClient.invalidateQueries({ queryKey: ['transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+    ]),
   })
 
   return {

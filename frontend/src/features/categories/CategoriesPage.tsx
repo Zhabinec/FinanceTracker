@@ -54,7 +54,7 @@ export function CategoriesPage() {
       <header className="app-header">
         <div><p className="eyebrow">Finance Tracker</p><h1>Категории</h1><p className="header-user">{user?.email}</p></div>
         <nav className="header-actions">
-          <Link className="ghost-button link-button" to="/">Аккаунт</Link>
+          <Link className="ghost-button link-button" to="/">Обзор</Link>
           <Link className="ghost-button link-button" to="/transactions">Операции</Link>
           <button className="ghost-button" disabled={leaving} onClick={async () => {
             setLeaving(true)

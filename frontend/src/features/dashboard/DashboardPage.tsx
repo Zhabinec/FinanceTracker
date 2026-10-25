@@ -42,7 +42,7 @@ export function DashboardPage() {
         <label>По дату<input type="date" value={period.to} onChange={(event) => setPeriod({ ...period, to: event.target.value })} /></label>
         <button className="ghost-button" onClick={() => setPeriod({ from: `${today.slice(0, 7)}-01`, to: today })}>Текущий месяц</button>
       </div>
-      <p className="muted">Границы периода — по Москве. Результат показывает разницу доходов и расходов за период.</p>
+      <p className="dashboard-note">Границы периода — по Москве. Результат показывает разницу доходов и расходов за период.</p>
     </section>
     {query.isPending && <p role="status">Загружаем статистику…</p>}
     {query.isError && <div className="notice error">{getApiError(query.error, 'Не удалось загрузить статистику.')}</div>}

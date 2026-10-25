@@ -10,6 +10,7 @@ export function AccountPage() {
     <main className="dashboard-shell">
       <header><div><p className="eyebrow">Finance Tracker</p><h1>Добрый день</h1></div>
         <nav className="header-actions">
+          <Link className="ghost-button link-button" to="/">Обзор</Link>
           <Link className="ghost-button link-button" to="/transactions">Операции</Link>
           <Link className="ghost-button link-button" to="/categories">Категории</Link>
           <button className="ghost-button" disabled={leaving} onClick={async () => { setLeaving(true); await signOut() }}>
