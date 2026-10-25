@@ -1,3 +1,4 @@
+using System.Globalization;
 using Finance.Application.Abstractions;
 using Finance.Domain.Transactions;
 using FinanceTransaction = Finance.Domain.Transactions.Transaction;
@@ -9,7 +10,7 @@ public sealed record TransactionDto(
     Guid CategoryId,
     string CategoryName,
     TransactionType Type,
-    decimal Amount,
+    string Amount,
     string? Description,
     DateOnly OccurredOn,
     DateTimeOffset CreatedAtUtc)
@@ -22,7 +23,7 @@ public sealed record TransactionDto(
             transaction.CategoryId,
             categoryName,
             transaction.Type,
-            transaction.Amount,
+            transaction.Amount.ToString("F2", CultureInfo.InvariantCulture),
             transaction.Description,
             MoscowDate.FromUtc(transaction.OccurredAtUtc),
             transaction.CreatedAtUtc);

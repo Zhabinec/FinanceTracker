@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { getApiError } from '../../api/apiError'
+import { formatMoney, formatDate } from '../../shared/formatting'
 import type { Category } from '../categories/categoryApi'
 import type { FinanceTransaction, TransactionInput } from './transactionApi'
 import { toTransactionInput, transactionSchema, type TransactionForm } from './validation'
@@ -106,12 +107,8 @@ export function TransactionRow({
     )
   }
 
-  const amount = new Intl.NumberFormat('ru-RU', {
-    style: 'currency',
-    currency,
-  }).format(transaction.amount)
-  const date = new Intl.DateTimeFormat('ru-RU').format(
-    new Date(`${transaction.occurredOn}T00:00:00+03:00`))
+  const amount = formatMoney(transaction.amount, currency)
+  const date = formatDate(transaction.occurredOn)
 
   return (
     <li className="transaction-row">

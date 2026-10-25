@@ -6,7 +6,7 @@ export type FinanceTransaction = {
   categoryId: string
   categoryName: string
   type: CategoryType
-  amount: number
+  amount: string
   description: string | null
   occurredOn: string
   createdAtUtc: string
