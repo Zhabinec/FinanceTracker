@@ -1,8 +1,6 @@
-using System.Data;
 using Finance.Application.Abstractions;
 using Finance.Domain.Users;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace Finance.Infrastructure.Persistence;
 
@@ -18,40 +16,25 @@ public sealed class RefreshSessionStore(FinanceDbContext dbContext) : IRefreshSe
         DateTimeOffset nowUtc, DateTimeOffset newExpiresAtUtc,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await using var transaction = await dbContext.Database.BeginTransactionAsync(
-                IsolationLevel.Serializable, cancellationToken);
-
-            var current = await dbContext.RefreshSessions
-                .SingleOrDefaultAsync(session => session.TokenHash == currentTokenHash,
-                    cancellationToken);
-
-            if (current is null || current.RevokedAtUtc is not null || current.ExpiresAtUtc <= nowUtc)
-                return null;
-
-            var user = await dbContext.Users.AsNoTracking()
-                .SingleAsync(item => item.Id == current.UserId, cancellationToken);
-            if (current.SecurityStamp != user.SecurityStamp || user.EmailConfirmedAtUtc is null) return null;
-            current.Revoke(nowUtc);
-            dbContext.RefreshSessions.Add(RefreshSession.Create(
-                current.UserId, newTokenHash, nowUtc, newExpiresAtUtc, user.SecurityStamp));
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-            return user;
-        }
-        catch (PostgresException exception) when (exception.SqlState == PostgresErrorCodes.SerializationFailure)
-        {
-            dbContext.ChangeTracker.Clear();
+        var ownerId = await dbContext.RefreshSessions.AsNoTracking().Where(session => session.TokenHash == currentTokenHash)
+            .Select(session => (Guid?)session.UserId).SingleOrDefaultAsync(cancellationToken);
+        if (ownerId is null) return null;
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        // Match password reset's lock order: user first, sessions second.
+        // SHARE permits independent devices to rotate, but blocks security-stamp changes.
+        var user = await dbContext.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Id\" = {ownerId.Value} FOR SHARE")
+            .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+        if (user is null || user.EmailConfirmedAtUtc is null) return null;
+        var current = await dbContext.RefreshSessions
+            .FromSqlInterpolated($"SELECT * FROM refresh_sessions WHERE \"TokenHash\" = {currentTokenHash} FOR UPDATE")
+            .SingleOrDefaultAsync(cancellationToken);
+        if (current is null || current.UserId != user.Id || current.RevokedAtUtc is not null || current.ExpiresAtUtc <= nowUtc || current.SecurityStamp != user.SecurityStamp)
             return null;
-        }
-        catch (DbUpdateException exception)
-            when (exception.InnerException is PostgresException
-                  { SqlState: PostgresErrorCodes.SerializationFailure })
-        {
-            dbContext.ChangeTracker.Clear();
-            return null;
-        }
+        current.Revoke(nowUtc);
+        dbContext.RefreshSessions.Add(RefreshSession.Create(current.UserId, newTokenHash, nowUtc, newExpiresAtUtc, user.SecurityStamp));
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return user;
     }
 
     public async Task RevokeAsync(string tokenHash, DateTimeOffset nowUtc,
