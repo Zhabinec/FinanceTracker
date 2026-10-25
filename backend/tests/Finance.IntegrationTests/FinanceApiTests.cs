@@ -8,6 +8,9 @@ using Finance.Domain.Transactions;
 using Finance.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.AspNetCore.TestHost;
+using Finance.Application.Dashboard;
 
 namespace Finance.IntegrationTests;
 
@@ -163,5 +166,57 @@ public sealed class FinanceApiTests(ApiFixture fixture) : IClassFixture<ApiFixtu
         var results = await Task.WhenAll(first.PostAsJsonAsync("/api/auth/refresh", new { }), second.PostAsJsonAsync("/api/auth/refresh", new { }));
         Assert.Single(results, result => result.StatusCode == HttpStatusCode.OK);
         Assert.Single(results, result => result.StatusCode == HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task EmptyDashboard_ReturnsZeros_AndCategoryNamesAreCaseInsensitive()
+    {
+        using var client = await User();
+        var dashboard = await client.GetFromJsonAsync<JsonElement>("/api/dashboard?from=2026-10-25&to=2026-10-25");
+        Assert.Equal("0.00", dashboard.GetProperty("result").GetString());
+        Assert.Empty(dashboard.GetProperty("recent").EnumerateArray());
+        var name = $"Unique-{Guid.NewGuid():N}";
+        Assert.Equal(HttpStatusCode.Created, (await client.PostAsJsonAsync("/api/categories", new { name, type = "Expense" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PostAsJsonAsync("/api/categories", new { name = name.ToUpperInvariant(), type = "Expense" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task UnexpectedErrors_ReturnSafeProblemDetails()
+    {
+        using var app = fixture.App.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IDashboardStore>();
+            services.AddScoped<IDashboardStore, BrokenDashboardStore>();
+        }));
+        using var client = await User();
+        using var brokenClient = app.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { BaseAddress = new Uri("https://localhost") });
+        brokenClient.DefaultRequestHeaders.Authorization = client.DefaultRequestHeaders.Authorization;
+        var response = await brokenClient.GetAsync("/api/dashboard");
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        var problem = await Json(response);
+        Assert.True(problem.TryGetProperty("traceId", out _));
+        Assert.DoesNotContain("private", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task CategoryDeactivatedAfterValidation_CannotBeUsedForNewTransaction()
+    {
+        using var client = await User();
+        var id = Guid.Parse(await Category(client));
+        using var scope = fixture.App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+        var category = await db.Categories.AsNoTracking().SingleAsync(item => item.Id == id);
+        var pending = Finance.Domain.Transactions.Transaction.Create(category.UserId, category, category.Type, 10m, null,
+            DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/categories/{id}/deactivate", new { })).StatusCode);
+        var store = new TransactionStore(db);
+        store.Add(pending);
+        await Assert.ThrowsAsync<ConflictException>(() => store.SaveChangesAsync(CancellationToken.None));
+    }
+
+    private sealed class BrokenDashboardStore : IDashboardStore
+    {
+        public Task<DashboardSnapshot> ReadAsync(Guid userId, DateTimeOffset fromUtc, DateTimeOffset toExclusiveUtc, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("private infrastructure error");
     }
 }

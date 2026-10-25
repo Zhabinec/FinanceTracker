@@ -66,7 +66,26 @@ public sealed class TransactionStore(FinanceDbContext dbContext) : ITransactionS
 
     public async Task SaveChangesAsync(CancellationToken cancellationToken)
     {
-        try { await dbContext.SaveChangesAsync(cancellationToken); }
+        try
+        {
+            await using var write = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+            // Serialize category deactivation against assigning it to a transaction.
+            // Keeping an unchanged inactive category on a historical operation is allowed.
+            foreach (var entry in dbContext.ChangeTracker.Entries<FinanceTransaction>()
+                .Where(entry => entry.State is EntityState.Added or EntityState.Modified))
+            {
+                if (entry.State == EntityState.Modified &&
+                    entry.Property(item => item.CategoryId).OriginalValue == entry.Entity.CategoryId) continue;
+                var categoryId = entry.Entity.CategoryId;
+                var category = await dbContext.Categories
+                    .FromSqlInterpolated($"SELECT * FROM categories WHERE \"Id\" = {categoryId} FOR SHARE")
+                    .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+                if (category is null || !category.IsActive)
+                    throw new Finance.Application.Common.ConflictException("Category is no longer active. Choose another category.");
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await write.CommitAsync(cancellationToken);
+        }
         catch (DbUpdateConcurrencyException)
         {
             throw new Finance.Application.Common.ConflictException("Transaction has changed. Reload it and try again.");
