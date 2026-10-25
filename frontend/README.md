@@ -1,41 +1,24 @@
-# Finance Tracker Frontend
+# Finance Tracker frontend
 
-Frontend личного финансового трекера на React, TypeScript и Vite.
-
-## Реализовано
-
-- регистрация пользователя;
-- вход по email и паролю;
-- клиентская валидация форм;
-- JWT access token в памяти приложения;
-- refresh token в `HttpOnly` cookie;
-- автоматическое восстановление сессии;
-- защищённый маршрут текущего пользователя;
-- выход с отзывом refresh token;
-- отображение ошибок backend API.
-
-## Локальный запуск
-
-Сначала запустите профиль `https` проекта `Finance.Api` в Visual Studio.
-API должен слушать `https://localhost:7105`.
-
-Затем из папки `frontend` выполните:
+React + TypeScript + Vite. Функции: auth, categories, transactions, dashboard.
+Полная инструкция запуска, настройки API, Docker и тестов — в [корневом README](../README.md).
 
 ```powershell
-npm.cmd run dev
+npm ci
+npm run dev
 ```
 
-Frontend будет доступен по адресу `http://localhost:5173`.
-Vite проксирует запросы `/api` на локальный ASP.NET Core API.
-
-## Проверка
+Vite: http://localhost:5173. Прокси /api: http://localhost:5280.
 
 ```powershell
-npm.cmd run lint
-npm.cmd run build
+npm test
+npm run lint
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
-## Следующий этап
-
-Следующий вертикальный срез — управление категориями доходов и расходов:
-создание, список, переименование, деактивация и восстановление.
+E2E ожидает запущенное приложение на http://localhost:5180. Другой адрес задаётся через E2E_BASE_URL.
+Отчёты и скриншоты сохраняются в playwright-report и test-results и исключены из Git.
+Деньги принимаются как строки; не преобразовывайте их в JavaScript number.
+Календарные даты отображаются без преобразования в часовой пояс браузера.
