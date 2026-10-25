@@ -13,12 +13,11 @@ import { useTransactions } from './useTransactions'
 import { toTransactionInput, todayInMoscow, transactionSchema, type TransactionForm } from './validation'
 
 export function TransactionsPage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const accountsQuery = useAccounts()
   const accounts = accountsQuery.data ?? []
   const [serverError, setServerError] = useState('')
-  const [leaving, setLeaving] = useState(false)
   const [query, setQuery] = useState<TransactionQuery>({ page: 1, pageSize: 20, sort: 'dateDesc', accountId: searchParams.get('accountId') || undefined })
   const changeFilter = (patch: Partial<TransactionQuery>) => setQuery((previous) => ({ ...previous, ...patch, page: 1 }))
   const { register, handleSubmit, control, setValue, setError, reset, formState: { errors } } =
@@ -79,21 +78,10 @@ export function TransactionsPage() {
   const categories = categoriesQuery.data ?? []
 
   return (
-    <main className="dashboard-shell transactions-page">
-      <header className="app-header">
-        <div><p className="eyebrow">Finance Tracker</p><h1>Операции</h1><p className="header-user">{user?.email}</p></div>
-        <nav className="header-actions">
-          <Link className="ghost-button link-button" to="/">Обзор</Link>
-          <Link className="ghost-button link-button" to="/accounts">Счета</Link>
-          <Link className="ghost-button link-button" to="/categories">Категории</Link>
-          <button className="ghost-button" disabled={leaving} onClick={async () => {
-            setLeaving(true)
-            await signOut()
-          }}>{leaving ? 'Выходим…' : 'Выйти'}</button>
-        </nav>
-      </header>
+    <section className="dashboard-shell transactions-page">
       <CurrencySelector />
-
+      <div className="journal-actions"><Link className="primary-button link-button" to="/categories">Добавить по категории</Link></div>
+      <details className="panel-disclosure transaction-entry-disclosure"><summary>Запись с датой</summary>
       <section className="transaction-create-card">
         <div><p className="eyebrow">Новая операция</p><h2>Запишите движение денег</h2>
           <p>Дата считается по Москве, а категория определяет, доход это или расход.</p></div>
@@ -131,10 +119,12 @@ export function TransactionsPage() {
           {accountsQuery.isSuccess && !accounts.some(a => !a.isArchived) && <p className="form-hint form-wide">Создайте или восстановите счёт на странице «Счета».</p>}
         </form>
       </section>
+      </details>
 
       <section className="transactions-list-card">
         <div className="transactions-heading"><div><p className="eyebrow">История</p><h2>Все операции</h2></div>
       <span className="count-badge">{transactionsQuery.data?.totalCount ?? 0}</span></div>
+        <details className="filter-disclosure"><summary>Фильтры и сортировка</summary>
         <div className="transaction-filters">
           <label>Счёт<select value={query.accountId ?? ''} onChange={event => changeFilter({ accountId: event.target.value || undefined })}>
             <option value="">Все</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.isArchived ? ' (архив)' : ''}</option>)}
@@ -157,6 +147,7 @@ export function TransactionsPage() {
           </select></label>
           <button className="ghost-button" onClick={() => setQuery({ page: 1, pageSize: 20, sort: 'dateDesc' })}>Сбросить</button>
         </div>
+        </details>
         {transactionsQuery.isPending && <div className="category-loading">Загружаем операции…</div>}
         {transactionsQuery.isError && <div className="notice error">
           {getApiError(transactionsQuery.error, 'Не удалось загрузить операции.')}
@@ -187,6 +178,6 @@ export function TransactionsPage() {
             onClick={() => setQuery({ ...query, page: query.page + 1 })}>Далее</button>
         </div>
       </section>
-    </main>
+    </section>
   )
 }

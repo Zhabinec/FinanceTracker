@@ -17,11 +17,10 @@ type Dashboard = {
 }
 
 export function DashboardPage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const display = useCurrencyDisplay()
   const today = todayInMoscow()
   const [period, setPeriod] = useState({ from: `${today.slice(0, 7)}-01`, to: today })
-  const [leaving, setLeaving] = useState(false)
   const query = useQuery({
     queryKey: ['dashboard', period],
     queryFn: async ({ signal }) => (await http.get<Dashboard>('/dashboard', { params: period, signal })).data,
@@ -29,19 +28,16 @@ export function DashboardPage() {
   const money = (amount: string) => display.money(amount, user?.baseCurrency ?? 'RUB')
   const data = query.data
 
-  return <main className="dashboard-shell">
-    <header className="app-header"><div><p className="eyebrow">Finance Tracker</p><h1>Обзор финансов</h1><p>{user?.email}</p></div>
-      <nav className="header-actions">
-        <Link className="ghost-button link-button" to="/transactions">Операции</Link>
-        <Link className="ghost-button link-button" to="/accounts">Счета</Link>
-        <Link className="ghost-button link-button" to="/categories">Категории</Link>
-        <Link className="ghost-button link-button" to="/account">Аккаунт</Link>
-        <button className="ghost-button" disabled={leaving} onClick={async () => { setLeaving(true); await signOut() }}>Выйти</button>
-      </nav>
-    </header>
+  return <section className="dashboard-shell">
+    <section className="summary-grid dashboard-metrics" aria-busy={query.isFetching}>
+      <article className="transactions-list-card"><h2>Доходы</h2><strong className="summary-value income">{data ? money(data.income) : '—'}</strong></article>
+      <article className="transactions-list-card"><h2>Расходы</h2><strong className="summary-value expense">{data ? money(data.expense) : '—'}</strong></article>
+      <article className="transactions-list-card"><h2>Результат периода</h2><strong className="summary-value">{data ? money(data.result) : '—'}</strong>
+        <p>{!data ? 'Ожидаем данные' : data.result.startsWith('-') ? 'Расходы превысили доходы' : data.result === '0.00' ? 'Доходы равны расходам' : 'Доходы превысили расходы'}</p></article>
+    </section>
     <CurrencySelector />
+    <details className="panel-disclosure dashboard-period"><summary>Период <span>{formatDate(period.from)} — {formatDate(period.to)}</span></summary>
     <section className="transactions-list-card">
-      <h2>Выбранный период</h2>
       <div className="transaction-filters">
         <label>С даты<input type="date" value={period.from} onChange={(event) => setPeriod({ ...period, from: event.target.value })} /></label>
         <label>По дату<input type="date" value={period.to} onChange={(event) => setPeriod({ ...period, to: event.target.value })} /></label>
@@ -49,14 +45,10 @@ export function DashboardPage() {
       </div>
       <p className="dashboard-note">Границы периода — по Москве. Результат показывает разницу доходов и расходов за период.</p>
     </section>
+    </details>
     {query.isPending && <p role="status">Загружаем статистику…</p>}
     {query.isError && <div className="notice error">{getApiError(query.error, 'Не удалось загрузить статистику.')}</div>}
     {data && <>
-      <section className="summary-grid">
-        <article className="transactions-list-card"><h2>Доходы</h2><strong className="summary-value income">{money(data.income)}</strong></article>
-        <article className="transactions-list-card"><h2>Расходы</h2><strong className="summary-value expense">{money(data.expense)}</strong></article>
-        <article className="transactions-list-card"><h2>Результат периода</h2><strong className="summary-value">{money(data.result)}</strong><p>{data.result.startsWith('-') ? 'Расходы превысили доходы' : data.result === '0.00' ? 'Доходы равны расходам' : 'Доходы превысили расходы'}</p></article>
-      </section>
       <section className="summary-grid category-summary">
         {(['Income', 'Expense'] as const).map((type) => <article className="transactions-list-card" key={type}>
           <h2>{type === 'Income' ? 'Доходы по категориям' : 'Расходы по категориям'}</h2>
@@ -72,5 +64,5 @@ export function DashboardPage() {
         </li>)}</ul><Link to="/transactions">Открыть журнал операций</Link>
       </section>
     </>}
-  </main>
+  </section>
 }

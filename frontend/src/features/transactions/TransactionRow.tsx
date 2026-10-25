@@ -127,8 +127,8 @@ export function TransactionRow({
         <span className={`transaction-sign ${transaction.type.toLowerCase()}`}>
           {transaction.type === 'Income' ? '+' : '−'}
         </span>
-        <div><strong>{transaction.categoryName}</strong>
-          <span>{accounts.find(a => a.id === transaction.accountId)?.name ?? 'Счёт'} · {transaction.description || 'Без описания'} · {date}</span></div>
+        <div><strong>{transaction.description || transaction.categoryName}</strong>
+          <span>{transaction.categoryName} · {accounts.find(a => a.id === transaction.accountId)?.name ?? 'Счёт'} · {date}</span></div>
       </div>
       <strong className={`transaction-amount ${transaction.type.toLowerCase()}`}>
         {transaction.type === 'Income' ? '+' : '−'}{amount}

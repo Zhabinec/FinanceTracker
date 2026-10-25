@@ -66,14 +66,10 @@ export function AccountsPage() {
     try { await create.mutateAsync({ name, openingBalance: parsed.data }); setName(''); setOpening('0') }
     catch (failure) { setError(getApiError(failure, 'Не удалось создать счёт.')) }
   }
-  return <main className="dashboard-shell">
-    <header className="app-header"><div><p className="eyebrow">Finance Tracker</p><h1>Счета</h1><p>{user?.email}</p></div>
-      <nav className="header-actions"><Link className="ghost-button link-button" to="/">Обзор</Link>
-        <Link className="ghost-button link-button" to="/transactions">Операции</Link>
-        <Link className="ghost-button link-button" to="/categories">Категории</Link></nav>
-    </header>
+  return <section className="dashboard-shell">
     <CurrencySelector />
-    <section className="transactions-list-card"><h2>Новый счёт</h2>
+    <details className="panel-disclosure account-create-disclosure"><summary>Новый счёт</summary>
+    <section className="transactions-list-card"><h2>Создание счёта</h2>
       <p>Счета пока работают в вашей базовой валюте: {user?.baseCurrency}. Начальный остаток задаётся при создании; дальнейшие изменения записывайте операциями.</p>
       {error && <div className="notice error" role="alert">{error}</div>}
       <form onSubmit={event => void submit(event)} className="account-create-form">
@@ -82,6 +78,7 @@ export function AccountsPage() {
         <button className="primary-button" disabled={create.isPending}>{create.isPending ? 'Создаём…' : 'Создать счёт'}</button>
       </form>
     </section>
+    </details>
     <p className="dashboard-note">Баланс включает начальный остаток и всю историю операций, включая будущие даты. Отрицательный баланс допустим. Архивирование сохраняет историю.</p>
     <label className="archive-toggle"><input type="checkbox" checked={showArchive} onChange={event => setShowArchive(event.target.checked)} /> Показать архивные счета</label>
     {query.isPending && <p role="status">Загружаем счета…</p>}
@@ -90,5 +87,5 @@ export function AccountsPage() {
       <AccountCard key={account.id} account={account} busy={change.isPending}
         onChange={async (a, nextName, isArchived) => { await change.mutateAsync({ account: a, name: nextName, isArchived }) }} />)}</section>
     {query.isSuccess && !query.data.some(a => showArchive || !a.isArchived) && <p>Нет активных счетов. Создайте новый или восстановите счёт из архива.</p>}
-  </main>
+  </section>
 }

@@ -14,10 +14,9 @@ import { deleteTransaction, type FinanceTransaction } from '../transactions/tran
 import { formatMoney } from '../../shared/formatting'
 
 export function CategoriesPage() {
-  const { user, signOut } = useAuth()
+  const { user } = useAuth()
   const [serverError, setServerError] = useState('')
   const [actionError, setActionError] = useState('')
-  const [leaving, setLeaving] = useState(false)
   const [quickCategory, setQuickCategory] = useState<Category | null>(null)
   const [added, setAdded] = useState<FinanceTransaction | null>(null)
   const [undoError, setUndoError] = useState('')
@@ -69,21 +68,7 @@ export function CategoriesPage() {
   const categories = categoriesQuery.data ?? []
 
   return (
-    <main className="dashboard-shell categories-page">
-      <header className="app-header">
-        <div><p className="eyebrow">Finance Tracker</p><h1>Категории</h1><p className="header-user">{user?.email}</p></div>
-        <nav className="header-actions">
-          <Link className="ghost-button link-button" to="/">Обзор</Link>
-          <Link className="ghost-button link-button" to="/accounts">Счета</Link>
-          <Link className="ghost-button link-button" to="/transactions">Операции</Link>
-          <button className="ghost-button" disabled={leaving} onClick={async () => {
-            setLeaving(true)
-            await signOut()
-          }}>{leaving ? 'Выходим…' : 'Выйти'}</button>
-        </nav>
-      </header>
-
-      <p className="category-quick-hint">Нажмите на категорию, введите название и сумму — готово.</p>
+    <section className="dashboard-shell categories-page">
       {added && <div className="notice success quick-entry-notice" role="status">
         Добавлено: {added.description} · {formatMoney(added.amount, user?.baseCurrency ?? 'RUB')}
         <button type="button" className="text-button" disabled={undoMutation.isPending} onClick={async () => {
@@ -131,6 +116,6 @@ export function CategoriesPage() {
         onClose={() => setQuickCategory(null)} onSaved={transaction => {
           setAdded(transaction); setUndone(false); setUndoError(''); setQuickCategory(null)
         }} />}
-    </main>
+    </section>
   )
 }

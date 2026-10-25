@@ -121,6 +121,7 @@ test('register, confirm email, record expenses, filter history and review financ
   await expect(page.getByRole('heading', { name: 'Обзор финансов' })).toBeVisible()
   const accountName = `Карта ${Date.now()}`
   await page.getByRole('link', { name: 'Счета', exact: true }).click()
+  await page.getByText('Новый счёт', { exact: true }).click()
   await page.getByLabel('Название', { exact: true }).fill(accountName)
   await page.getByLabel('Начальный остаток', { exact: true }).fill('1000,00')
   await page.getByRole('button', { name: 'Создать счёт', exact: true }).click()
@@ -144,6 +145,7 @@ test('register, confirm email, record expenses, filter history and review financ
   await page.getByRole('button', { name: 'Добавить', exact: true }).click()
   await expect(page.getByText(category, { exact: true })).toBeVisible()
   await page.getByRole('link', { name: 'Операции', exact: true }).click()
+  await page.getByText('Запись с датой', { exact: true }).click()
   const create = page.locator('.transaction-create-form')
   await create.getByRole('combobox', { name: 'Счёт', exact: true }).selectOption({ label: `${accountName} (RUB)` })
   await create.getByLabel('Категория').selectOption({ label: category })
@@ -164,6 +166,7 @@ test('register, confirm email, record expenses, filter history and review financ
   await page.getByRole('combobox', { name: 'Валюта отображения', exact: true }).selectOption('RUB')
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Операции', exact: true })).toBeVisible()
+  await page.getByText('Фильтры и сортировка', { exact: true }).click()
   await page.locator('.transaction-filters').getByLabel('С даты').fill('2026-10-26')
   await expect(page.getByText('Операций по выбранным условиям нет.')).toBeVisible()
   await page.getByRole('button', { name: 'Сбросить' }).click()
@@ -186,6 +189,7 @@ test('register, confirm email, record expenses, filter history and review financ
   await expect(accountCard.locator('.summary-value')).not.toContainText('$')
   await page.getByRole('combobox', { name: 'Валюта отображения', exact: true }).selectOption('RUB')
   await page.goto('/')
+  await page.locator('.dashboard-period > summary').click()
   await page.getByLabel('С даты').fill('2026-10-25')
   await page.getByLabel('По дату').fill('2026-10-25')
   await expect(page.locator('.summary-grid').first()).toContainText('124,50')
@@ -205,6 +209,7 @@ test('register, confirm email, record expenses, filter history and review financ
 })
 
 test('quick category entry has two fields, preserves drafts on errors and supports undo', async ({ page, request }) => {
+  test.setTimeout(60_000)
   const email = `quick-${Date.now()}@example.com`
   const password = 'Quick-entry-test-123!'
   expect((await request.post('/api/auth/register', { data: { email, password } })).status()).toBe(201)
@@ -214,6 +219,14 @@ test('quick category entry has two fields, preserves drafts on errors and suppor
   const category = await (await request.post('/api/categories', { headers, data: { name: 'Продукты', type: 'Expense' } })).json()
   for (const name of ['Транспорт', 'Кафе', 'Покупки для дома и повседневных нужд'])
     expect((await request.post('/api/categories', { headers, data: { name, type: 'Expense' } })).status()).toBe(201)
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const path of ['/login', '/register', '/forgot-password', '/verify-email']) {
+      await page.goto(path)
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      if (width === 390 && path === '/login') await page.screenshot({ path: 'test-results/shell-login-390.png' })
+    }
+  }
   await page.goto('/login')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
@@ -221,6 +234,39 @@ test('quick category entry has two fields, preserves drafts on errors and suppor
   await page.getByRole('link', { name: 'Категории', exact: true }).click()
   const opener = page.getByRole('button', { name: 'Добавить расход: Продукты', exact: true })
   const dialog = page.getByRole('dialog', { name: 'Продукты', exact: true })
+  const navigation = page.getByRole('navigation', { name: 'Основная навигация' })
+  const routes = [
+    ['Обзор', 'Обзор финансов', 'overview'], ['Категории', 'Категории', 'categories'],
+    ['Операции', 'Операции', 'transactions'], ['Счета', 'Счета', 'accounts'], ['Аккаунт', 'Аккаунт', 'profile'],
+  ]
+  for (const width of [1280, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    for (const [label, title, name] of routes) {
+      await navigation.getByRole('link', { name: label, exact: true }).click()
+      await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible()
+      await expect(navigation.getByRole('link')).toHaveText(routes.map(item => item[0]))
+      await expect(navigation.locator('[aria-current=page]')).toHaveText(label)
+      const logout = page.getByRole('button', { name: 'Выйти', exact: true })
+      await expect(logout).toHaveText('')
+      expect((await logout.boundingBox()).width).toBeGreaterThanOrEqual(44)
+      if (width === 390 || width === 1280)
+        await page.screenshot({ path: `test-results/shell-${name}-${width}.png` })
+      if (label === 'Операции') {
+        await page.getByText('Запись с датой', { exact: true }).click()
+        await page.getByText('Фильтры и сортировка', { exact: true }).click()
+      }
+      if (label === 'Обзор') await page.locator('.dashboard-period > summary').click()
+      if (label === 'Счета') await page.getByText('Новый счёт', { exact: true }).click()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+      if (width <= 900) {
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+        const position = await navigation.boundingBox()
+        expect(Math.abs(position.y + position.height - 844)).toBeLessThanOrEqual(1)
+        await page.evaluate(() => window.scrollTo(0, 0))
+      }
+    }
+  }
+  await navigation.getByRole('link', { name: 'Категории', exact: true }).click()
   for (const width of [1280, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)

@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
 export function AuthLayout({ title, subtitle, alternateText, alternateLink,
   alternateLabel, children }: { title: string; subtitle: string; alternateText: string;
     alternateLink: string; alternateLabel: string; children: ReactNode }) {
+  useEffect(() => { document.title = `${title} · Finance Tracker` }, [title])
   return (
     <main className="auth-shell">
       <section className="brand-panel">

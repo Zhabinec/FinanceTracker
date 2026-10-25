@@ -12,6 +12,7 @@ import { RegisterPage } from './features/auth/RegisterPage'
 import { TransactionsPage } from './features/transactions/TransactionsPage'
 import { useAuth } from './features/auth/useAuth'
 import './App.css'
+import { AppShell } from './shared/AppShell'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { status } = useAuth()
@@ -37,11 +38,13 @@ export default function App() {
       <Route path="/reset-password" element={<PasswordRecoveryPage key={location.key} reset />} />
       <Route path="/verify-email" element={<EmailVerificationPage key="verification" />} />
       <Route path="/confirm-email" element={<EmailVerificationPage key={location.key} confirm />} />
-      <Route path="/" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-      <Route path="/account" element={<ProtectedRoute><AccountPage /></ProtectedRoute>} />
-      <Route path="/accounts" element={<ProtectedRoute><AccountsPage /></ProtectedRoute>} />
-      <Route path="/categories" element={<ProtectedRoute><CategoriesPage /></ProtectedRoute>} />
-      <Route path="/transactions" element={<ProtectedRoute><TransactionsPage /></ProtectedRoute>} />
+      <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/account" element={<AccountPage />} />
+        <Route path="/accounts" element={<AccountsPage />} />
+        <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/transactions" element={<TransactionsPage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
