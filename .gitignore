@@ -19,6 +19,8 @@ TestResults/
 **/dist-ssr/
 **/.vite/
 **/coverage/
+**/test-results/
+**/playwright-report/
 *.tsbuildinfo
 
 # Local configuration and secrets
