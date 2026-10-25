@@ -13,6 +13,8 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
         if (exception is RequestValidationException validation)
             problem = new ValidationProblemDetails(validation.Errors.ToDictionary(pair => pair.Key, pair => pair.Value))
             { Status = 400, Title = validation.Message };
+        else if (exception is ConflictException)
+            problem = new ProblemDetails { Status = 409, Title = exception.Message };
         else
         {
             logger.LogError(exception, "Request {Method} {Path} failed. Trace {TraceId}",

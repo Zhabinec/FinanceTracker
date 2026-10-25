@@ -13,7 +13,8 @@ public sealed record TransactionDto(
     string Amount,
     string? Description,
     DateOnly OccurredOn,
-    DateTimeOffset CreatedAtUtc)
+    DateTimeOffset CreatedAtUtc,
+    Guid Version)
 {
     public static TransactionDto From(
         FinanceTransaction transaction,
@@ -26,7 +27,8 @@ public sealed record TransactionDto(
             transaction.Amount.ToString("F2", CultureInfo.InvariantCulture),
             transaction.Description,
             MoscowDate.FromUtc(transaction.OccurredAtUtc),
-            transaction.CreatedAtUtc);
+            transaction.CreatedAtUtc,
+            transaction.Version);
 
     public static TransactionDto From(TransactionRecord record) =>
         From(record.Transaction, record.CategoryName);

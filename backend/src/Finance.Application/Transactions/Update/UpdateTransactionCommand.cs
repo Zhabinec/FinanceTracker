@@ -8,4 +8,5 @@ public sealed record UpdateTransactionCommand(
     TransactionType Type,
     decimal Amount,
     string? Description,
-    DateOnly? OccurredOn);
+    DateOnly? OccurredOn,
+    Guid? Version = null);

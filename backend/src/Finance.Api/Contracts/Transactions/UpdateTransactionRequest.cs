@@ -8,4 +8,5 @@ public sealed record UpdateTransactionRequest(
     TransactionType Type,
     [property: JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)] decimal Amount,
     string? Description,
-    DateOnly? OccurredOn);
+    DateOnly? OccurredOn,
+    Guid? Version);

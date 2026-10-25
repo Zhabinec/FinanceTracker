@@ -35,6 +35,10 @@ public sealed class UpdateTransactionHandler(
         {
             return TransactionMutationResult.NotFound();
         }
+        if (command.Version is null)
+            return TransactionMutationResult.Invalid(new Dictionary<string, string[]> { ["version"] = ["Transaction version is required."] });
+        if (transaction.Version != command.Version)
+            throw new Finance.Application.Common.ConflictException("Transaction has changed. Reload it before saving.");
 
         var category = await categoryStore.FindOwnedAsync(
             command.CategoryId,

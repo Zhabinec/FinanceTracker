@@ -64,6 +64,12 @@ public sealed class TransactionStore(FinanceDbContext dbContext) : ITransactionS
     public void Remove(FinanceTransaction transaction) =>
         dbContext.Transactions.Remove(transaction);
 
-    public Task SaveChangesAsync(CancellationToken cancellationToken) =>
-        dbContext.SaveChangesAsync(cancellationToken);
+    public async Task SaveChangesAsync(CancellationToken cancellationToken)
+    {
+        try { await dbContext.SaveChangesAsync(cancellationToken); }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new Finance.Application.Common.ConflictException("Transaction has changed. Reload it and try again.");
+        }
+    }
 }

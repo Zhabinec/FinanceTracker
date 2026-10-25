@@ -65,7 +65,8 @@ public sealed class TransactionsController(
                 request.Type,
                 request.Amount,
                 request.Description,
-                request.OccurredOn),
+                request.OccurredOn,
+                request.Version),
             cancellationToken);
 
         return ToActionResult(result, StatusCodes.Status200OK);
@@ -76,10 +77,12 @@ public sealed class TransactionsController(
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(
         Guid transactionId,
+        [FromQuery] Guid? version,
         CancellationToken cancellationToken)
     {
         var status = await deleteTransactionHandler.HandleAsync(
             transactionId,
+            version,
             cancellationToken);
 
         return status switch

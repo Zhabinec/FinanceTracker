@@ -13,6 +13,7 @@ public sealed class TransactionConfiguration : IEntityTypeConfiguration<FinanceT
         builder.ToTable("transactions");
 
         builder.HasKey(transaction => transaction.Id);
+        builder.Property(transaction => transaction.Version).IsConcurrencyToken();
 
         builder.Property(transaction => transaction.Type)
             .HasConversion<int>()

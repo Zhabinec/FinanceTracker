@@ -33,6 +33,7 @@ public sealed class Transaction
     }
 
     public Guid Id { get; private set; }
+    public Guid Version { get; private set; } = Guid.NewGuid();
 
     public Guid UserId { get; private set; }
 
@@ -91,6 +92,7 @@ public sealed class Transaction
         Amount = amount;
         Description = NormalizeDescription(description);
         OccurredAtUtc = occurredAtUtc;
+        Version = Guid.NewGuid();
     }
 
     private static void Validate(

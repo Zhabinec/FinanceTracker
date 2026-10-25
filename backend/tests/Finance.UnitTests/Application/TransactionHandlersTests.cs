@@ -198,7 +198,7 @@ public sealed class TransactionHandlersTests
                 TransactionType.Expense,
                 125m,
                 null,
-                new DateOnly(2026, 9, 21)),
+                new DateOnly(2026, 9, 21), transaction.Version),
             CancellationToken.None);
 
         Assert.Equal(TransactionMutationStatus.Success, result.Status);
@@ -224,7 +224,7 @@ public sealed class TransactionHandlersTests
             new FakeCurrentUser(Guid.NewGuid()),
             store);
 
-        var result = await handler.HandleAsync(transaction.Id, CancellationToken.None);
+        var result = await handler.HandleAsync(transaction.Id, transaction.Version, CancellationToken.None);
 
         Assert.Equal(DeleteTransactionStatus.NotFound, result);
         Assert.Single(store.Transactions);

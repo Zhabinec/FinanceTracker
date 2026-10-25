@@ -10,6 +10,7 @@ export type FinanceTransaction = {
   description: string | null
   occurredOn: string
   createdAtUtc: string
+  version: string
 }
 
 export type TransactionInput = {
@@ -18,6 +19,7 @@ export type TransactionInput = {
   amount: string
   description: string | null
   occurredOn: string
+  version?: string
 }
 
 export type TransactionQuery = {
@@ -41,6 +43,6 @@ export async function updateTransaction(transactionId: string, input: Transactio
   return response.data
 }
 
-export async function deleteTransaction(transactionId: string) {
-  await http.delete(`/transactions/${transactionId}`)
+export async function deleteTransaction(transactionId: string, version: string) {
+  await http.delete(`/transactions/${transactionId}`, { params: { version } })
 }

@@ -63,8 +63,8 @@ export function TransactionsPage() {
     await actionMutation.mutateAsync({ kind: 'update', transactionId, input })
   }
 
-  const remove = async (transactionId: string) => {
-    await actionMutation.mutateAsync({ kind: 'delete', transactionId })
+  const remove = async (transactionId: string, version: string) => {
+    await actionMutation.mutateAsync({ kind: 'delete', transactionId, version })
   }
 
   const categories = categoriesQuery.data ?? []

@@ -19,9 +19,10 @@ export function TransactionRow({
   currency: string
   busy: boolean
   onUpdate: (transactionId: string, input: TransactionInput) => Promise<void>
-  onDelete: (transactionId: string) => Promise<void>
+  onDelete: (transactionId: string, version: string) => Promise<void>
 }) {
   const [editing, setEditing] = useState(false)
+  const [editingVersion, setEditingVersion] = useState(transaction.version)
   const [actionError, setActionError] = useState('')
   const { register, handleSubmit, control, setValue, setError, reset, formState: { errors } } =
     useForm<TransactionForm>({
@@ -59,7 +60,7 @@ export function TransactionRow({
     }
 
     try {
-      await onUpdate(transaction.id, toTransactionInput(parsed.data))
+      await onUpdate(transaction.id, { ...toTransactionInput(parsed.data), version: editingVersion })
       setEditing(false)
     } catch (error) {
       setActionError(getApiError(error, 'Не удалось сохранить операцию.'))
@@ -70,7 +71,7 @@ export function TransactionRow({
     if (!window.confirm('Удалить эту операцию без возможности восстановления?')) return
     setActionError('')
     try {
-      await onDelete(transaction.id)
+      await onDelete(transaction.id, transaction.version)
     } catch (error) {
       setActionError(getApiError(error, 'Не удалось удалить операцию.'))
     }
@@ -124,7 +125,7 @@ export function TransactionRow({
       </strong>
       <div className="category-actions">
         <button type="button" className="text-button" disabled={busy}
-          onClick={() => setEditing(true)}>Изменить</button>
+          onClick={() => { cancel(); setEditingVersion(transaction.version); setEditing(true) }}>Изменить</button>
         <button type="button" className="text-button danger-action" disabled={busy}
           onClick={() => { void remove() }}>Удалить</button>
       </div>

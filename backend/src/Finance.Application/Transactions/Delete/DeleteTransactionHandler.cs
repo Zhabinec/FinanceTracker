@@ -15,6 +15,7 @@ public sealed class DeleteTransactionHandler(
 {
     public async Task<DeleteTransactionStatus> HandleAsync(
         Guid transactionId,
+        Guid? version,
         CancellationToken cancellationToken)
     {
         if (currentUser.UserId is not { } userId)
@@ -30,6 +31,10 @@ public sealed class DeleteTransactionHandler(
         {
             return DeleteTransactionStatus.NotFound;
         }
+        if (version is null)
+            throw new Finance.Application.Common.RequestValidationException(new Dictionary<string, string[]> { ["version"] = ["Transaction version is required."] });
+        if (transaction.Version != version)
+            throw new Finance.Application.Common.ConflictException("Transaction has changed. Reload it before deleting.");
 
         transactionStore.Remove(transaction);
         await transactionStore.SaveChangesAsync(cancellationToken);
