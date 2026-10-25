@@ -1,4 +1,5 @@
 using Finance.Domain.Transactions;
+using Finance.Application.Transactions.GetTransactions;
 using FinanceTransaction = Finance.Domain.Transactions.Transaction;
 
 namespace Finance.Application.Abstractions;
@@ -9,8 +10,9 @@ public sealed record TransactionRecord(
 
 public interface ITransactionStore
 {
-    Task<IReadOnlyList<TransactionRecord>> ListByUserAsync(
+    Task<TransactionRecordPage> ListByUserAsync(
         Guid userId,
+        TransactionQuery query,
         CancellationToken cancellationToken);
 
     Task<FinanceTransaction?> FindOwnedAsync(

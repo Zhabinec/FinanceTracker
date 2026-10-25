@@ -20,8 +20,14 @@ export type TransactionInput = {
   occurredOn: string
 }
 
-export async function getTransactions() {
-  const response = await http.get<FinanceTransaction[]>('/transactions')
+export type TransactionQuery = {
+  from?: string; to?: string; categoryId?: string; type?: CategoryType | ''
+  sort?: string; page: number; pageSize: number
+}
+export type TransactionPage = { items: FinanceTransaction[]; totalCount: number; page: number; pageSize: number }
+
+export async function getTransactions(query: TransactionQuery, signal?: AbortSignal) {
+  const response = await http.get<TransactionPage>('/transactions', { params: query, signal })
   return response.data
 }
 

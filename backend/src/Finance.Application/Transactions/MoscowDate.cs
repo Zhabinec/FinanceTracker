@@ -1,6 +1,6 @@
 namespace Finance.Application.Transactions;
 
-internal static class MoscowDate
+public static class MoscowDate
 {
     private static readonly TimeSpan UtcOffset = TimeSpan.FromHours(3);
 

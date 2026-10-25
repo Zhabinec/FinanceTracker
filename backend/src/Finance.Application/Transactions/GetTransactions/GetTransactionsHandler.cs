@@ -6,7 +6,8 @@ public sealed class GetTransactionsHandler(
     ICurrentUser currentUser,
     ITransactionStore transactionStore)
 {
-    public async Task<IReadOnlyList<TransactionDto>?> HandleAsync(
+    public async Task<TransactionPage?> HandleAsync(
+        TransactionQuery query,
         CancellationToken cancellationToken)
     {
         if (currentUser.UserId is not { } userId)
@@ -14,10 +15,13 @@ public sealed class GetTransactionsHandler(
             return null;
         }
 
+        query.Validate();
         var transactions = await transactionStore.ListByUserAsync(
             userId,
+            query,
             cancellationToken);
 
-        return transactions.Select(TransactionDto.From).ToArray();
+        return new TransactionPage(transactions.Items.Select(TransactionDto.From).ToArray(),
+            transactions.TotalCount, query.Page, query.PageSize);
     }
 }

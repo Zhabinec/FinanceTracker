@@ -132,11 +132,11 @@ public sealed class TransactionHandlersTests
         var store = new FakeTransactionStore(transaction);
         var handler = new GetTransactionsHandler(new FakeCurrentUser(userId), store);
 
-        var result = await handler.HandleAsync(CancellationToken.None);
+        var result = await handler.HandleAsync(new TransactionQuery(), CancellationToken.None);
 
         Assert.NotNull(result);
         Assert.Equal(userId, store.LastListUserId);
-        Assert.Equal(new DateOnly(2026, 9, 21), Assert.Single(result).OccurredOn);
+        Assert.Equal(new DateOnly(2026, 9, 21), Assert.Single(result.Items).OccurredOn);
     }
 
     [Fact]
@@ -277,15 +277,17 @@ public sealed class TransactionHandlersTests
         public int Saves { get; private set; }
         public Guid? LastListUserId { get; private set; }
 
-        public Task<IReadOnlyList<TransactionRecord>> ListByUserAsync(
+        public Task<TransactionRecordPage> ListByUserAsync(
             Guid userId,
+            TransactionQuery query,
             CancellationToken cancellationToken)
         {
             LastListUserId = userId;
-            return Task.FromResult<IReadOnlyList<TransactionRecord>>(Transactions
+            var items = Transactions
                 .Where(transaction => transaction.UserId == userId)
                 .Select(transaction => new TransactionRecord(transaction, "Category"))
-                .ToArray());
+                .ToArray();
+            return Task.FromResult(new TransactionRecordPage(items, items.Length));
         }
 
         public Task<FinanceTransaction?> FindOwnedAsync(

@@ -19,11 +19,11 @@ public sealed class TransactionsController(
     DeleteTransactionHandler deleteTransactionHandler) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<TransactionDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<TransactionPage>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAll([FromQuery] TransactionQuery query, CancellationToken cancellationToken)
     {
-        var transactions = await getTransactionsHandler.HandleAsync(cancellationToken);
+        var transactions = await getTransactionsHandler.HandleAsync(query, cancellationToken);
         return transactions is null ? Unauthorized() : Ok(transactions);
     }
 

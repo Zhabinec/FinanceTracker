@@ -7,11 +7,11 @@ export type TransactionAction =
 
 const transactionsQueryKey = ['transactions'] as const
 
-export function useTransactions() {
+export function useTransactions(query: transactionApi.TransactionQuery) {
   const queryClient = useQueryClient()
   const transactionsQuery = useQuery({
-    queryKey: transactionsQueryKey,
-    queryFn: transactionApi.getTransactions,
+    queryKey: [...transactionsQueryKey, query],
+    queryFn: ({ signal }) => transactionApi.getTransactions(query, signal),
   })
 
   const createMutation = useMutation({
