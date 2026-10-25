@@ -65,6 +65,66 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("accounts", (string)null);
                 });
 
+            modelBuilder.Entity("Finance.Domain.Accounts.AccountTransfer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SourceAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TargetAccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SourceAccountId", "UserId");
+
+                    b.HasIndex("TargetAccountId", "UserId");
+
+                    b.HasIndex("UserId", "CreatedAtUtc");
+
+                    b.HasIndex("UserId", "RequestId")
+                        .IsUnique();
+
+                    b.ToTable("account_transfers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_account_transfers_amount_positive", "\"Amount\" > 0");
+
+                            t.HasCheckConstraint("ck_account_transfers_different_accounts", "\"SourceAccountId\" <> \"TargetAccountId\"");
+                        });
+                });
+
             modelBuilder.Entity("Finance.Domain.Categories.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -298,6 +358,23 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.HasOne("Finance.Domain.Users.User", null)
                         .WithMany()
                         .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Accounts.AccountTransfer", b =>
+                {
+                    b.HasOne("Finance.Domain.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("SourceAccountId", "UserId")
+                        .HasPrincipalKey("Id", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Finance.Domain.Accounts.Account", null)
+                        .WithMany()
+                        .HasForeignKey("TargetAccountId", "UserId")
+                        .HasPrincipalKey("Id", "UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

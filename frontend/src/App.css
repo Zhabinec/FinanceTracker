@@ -209,6 +209,22 @@ button:disabled { opacity:.6; cursor:wait; }
 .page-heading p { margin: 10px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .form-card h2 { overflow-wrap: anywhere; }
 .form-card a, .currency-display a { color: var(--green); text-underline-offset: 3px; }
+.transfer-form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.transfer-notice { margin-top: 16px; }
+.transfer-list { padding: 0; margin: 0; list-style: none; display: grid; gap: 10px; }
+.transfer-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 16px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); }
+.transfer-row > div { min-width: 0; }
+.transfer-row strong { overflow-wrap: anywhere; }
+.transfer-row span { display: block; color: var(--muted); font-size: 13px; margin-top: 5px; overflow-wrap: anywhere; }
+.transfer-row > button { min-height: 44px; }
+.transfer-row.cancelled { color: var(--muted); }
+.transfer-row.cancelled .transfer-amount { text-decoration: line-through; }
+@media (max-width: 600px) {
+  .transfer-form { grid-template-columns: 1fr; }
+  .transfer-row { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .transfer-row > div { grid-column: 1 / -1; }
+  .transfer-row > button { padding: 8px; }
+}
 .skip-link { position: fixed; top: -100px; left: 16px; z-index: 100; padding: 12px 18px; border-radius: 12px; background: var(--green); color: white; }
 .skip-link:focus { top: 12px; }
 .app-shell .transactions-list-card { padding: 24px; border-radius: 20px; background: #fffffff0; }

@@ -8,6 +8,7 @@ import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { useAuth } from '../auth/useAuth'
 import { useAccounts, type MoneyAccount } from './accountApi'
 import { openingBalanceSchema } from './validation'
+import { TransfersPanel } from './TransfersPanel'
 
 function AccountCard({ account, onChange, busy }: {
   account: MoneyAccount; busy: boolean
@@ -37,7 +38,7 @@ function AccountCard({ account, onChange, busy }: {
       <button className="text-button" disabled={busy} onClick={() => { setName(account.name); setVersion(account.version); setError(''); setEditing(true) }}>Переименовать</button>
       <button className="text-button" disabled={busy} onClick={() => void change(account.name, !account.isArchived, account.version)}>
         {account.isArchived ? 'Восстановить' : 'В архив'}</button>
-      <Link className="text-button" to={`/transactions?accountId=${account.id}`}>Операции счёта</Link>
+      <Link className="text-button" to={`/transactions?accountId=${account.id}`}>Доходы и расходы</Link>
     </div>}
   </article>
 }
@@ -87,5 +88,6 @@ export function AccountsPage() {
       <AccountCard key={account.id} account={account} busy={change.isPending}
         onChange={async (a, nextName, isArchived) => { await change.mutateAsync({ account: a, name: nextName, isArchived }) }} />)}</section>
     {query.isSuccess && !query.data.some(a => showArchive || !a.isArchived) && <p>Нет активных счетов. Создайте новый или восстановите счёт из архива.</p>}
+    <TransfersPanel accounts={query.data ?? []} pending={query.isPending} />
   </section>
 }

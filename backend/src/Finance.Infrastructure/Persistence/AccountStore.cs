@@ -14,7 +14,9 @@ public sealed class AccountStore(FinanceDbContext db) : IAccountStore
             .OrderBy(a => a.IsArchived).ThenBy(a => a.Name).ThenBy(a => a.Id)
             .Select(a => new AccountBalance(a, a.OpeningBalance +
                 (db.Transactions.Where(t => t.UserId == userId && t.AccountId == a.Id)
-                    .Sum(t => (decimal?)(t.Type == TransactionType.Income ? t.Amount : -t.Amount)) ?? 0m)))
+                    .Sum(t => (decimal?)(t.Type == TransactionType.Income ? t.Amount : -t.Amount)) ?? 0m)
+                + (db.AccountTransfers.Where(t => t.UserId == userId && t.TargetAccountId == a.Id && t.CancelledAtUtc == null).Sum(t => (decimal?)t.Amount) ?? 0m)
+                - (db.AccountTransfers.Where(t => t.UserId == userId && t.SourceAccountId == a.Id && t.CancelledAtUtc == null).Sum(t => (decimal?)t.Amount) ?? 0m)))
             .ToListAsync(cancellationToken);
 
     public Task<Account?> FindOwnedAsync(Guid id, Guid userId, CancellationToken cancellationToken) =>

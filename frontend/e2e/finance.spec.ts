@@ -98,6 +98,7 @@ test('native clipboard preserves exact text and replaces selections across forms
 })
 
 test('register, confirm email, record expenses, filter history and review finances', async ({ page, request }) => {
+  test.setTimeout(60_000)
   const email = `e2e-${Date.now()}@example.com`
   const category = `Продукты ${Date.now()}`
   await page.goto('/register')
@@ -127,6 +128,48 @@ test('register, confirm email, record expenses, filter history and review financ
   await page.getByRole('button', { name: 'Создать счёт', exact: true }).click()
   const accountCard = page.locator('.account-card').filter({ has: page.getByRole('heading', { name: accountName, exact: true }) })
   await expect(accountCard.locator('.summary-value')).toContainText('1 000,00')
+  const primaryCard = page.locator('.account-card').filter({ has: page.getByRole('heading', { name: 'Основной счёт', exact: true }) })
+  await page.getByText('Перевод между счетами', { exact: true }).click()
+  const transferForm = page.locator('.transfer-form')
+  await transferForm.getByRole('combobox', { name: 'Откуда', exact: true }).selectOption({ label: accountName })
+  await transferForm.getByRole('combobox', { name: 'Куда', exact: true }).selectOption({ label: 'Основной счёт' })
+  await transferForm.getByLabel('Сумма').fill('25,99')
+  await transferForm.getByLabel('Комментарий').fill('В наличные')
+  const transferRequestIds: string[] = []
+  let loseResponse = true
+  await page.route('**/api/transfers', async route => {
+    if (route.request().method() !== 'POST') { await route.continue(); return }
+    transferRequestIds.push(route.request().postDataJSON().requestId)
+    if (loseResponse) {
+      loseResponse = false
+      expect((await route.fetch()).status()).toBe(201)
+      await route.abort('failed')
+    } else await route.continue()
+  })
+  await transferForm.getByRole('button', { name: 'Перевести', exact: true }).click()
+  await expect(transferForm.getByRole('alert')).toBeVisible()
+  await expect(transferForm.getByLabel('Сумма')).toHaveValue('25,99')
+  await transferForm.getByRole('button', { name: 'Перевести', exact: true }).click({ clickCount: 2 })
+  await expect(page.locator('.transfer-row')).toHaveCount(1)
+  await expect(transferForm.getByLabel('Сумма')).toHaveValue('')
+  expect(transferRequestIds).toHaveLength(2)
+  expect(transferRequestIds[0]).toBe(transferRequestIds[1])
+  await page.unroute('**/api/transfers')
+  await expect(accountCard.locator('.summary-value')).toContainText('974,01')
+  await expect(primaryCard.locator('.summary-value')).toContainText('25,99')
+  await page.locator('.transfer-history').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/transfers-desktop.png' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.locator('.transfer-history').scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/transfers-mobile.png' })
+  page.once('dialog', dialog => dialog.accept())
+  await page.locator('.transfer-row').getByRole('button', { name: 'Отменить перевод', exact: true }).click()
+  await expect(page.locator('.transfer-row')).toContainText('Отменён')
+  await expect(accountCard.locator('.summary-value')).toContainText('1 000,00')
+  await expect(primaryCard.locator('.summary-value')).toContainText('0,00')
+  await page.reload()
+  await expect(page.locator('.transfer-row')).toContainText('Отменён')
+  await page.setViewportSize({ width: 1280, height: 844 })
   await page.route('**/api/currencies/rates', route => route.fulfill({ json: {
     date: '2026-10-25', source: 'ЦБ РФ', rublesPerUnit: { RUB: '1', USD: '100', EUR: '150' },
   } }))
