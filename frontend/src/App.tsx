@@ -1,18 +1,19 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { useEffect } from 'react'
+import { lazy, useEffect } from 'react'
 import { preventRepeatedPaste } from './shared/pasteShortcut'
-import { AccountPage } from './features/auth/AccountPage'
-import { AccountsPage } from './features/accounts/AccountsPage'
-import { DashboardPage } from './features/dashboard/DashboardPage'
-import { CategoriesPage } from './features/categories/CategoriesPage'
 import { LoginPage } from './features/auth/LoginPage'
 import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
 import { EmailVerificationPage } from './features/auth/EmailVerificationPage'
 import { RegisterPage } from './features/auth/RegisterPage'
-import { TransactionsPage } from './features/transactions/TransactionsPage'
 import { useAuth } from './features/auth/useAuth'
 import './App.css'
 import { AppShell } from './shared/AppShell'
+
+const AccountPage = lazy(() => import('./features/auth/AccountPage').then(module => ({ default: module.AccountPage })))
+const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then(module => ({ default: module.AccountsPage })))
+const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })))
+const CategoriesPage = lazy(() => import('./features/categories/CategoriesPage').then(module => ({ default: module.CategoriesPage })))
+const TransactionsPage = lazy(() => import('./features/transactions/TransactionsPage').then(module => ({ default: module.TransactionsPage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { status } = useAuth()

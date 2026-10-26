@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../features/auth/useAuth'
+import { PageBoundary } from './PageBoundary'
 
 const sections = [
   { path: '/', label: 'Обзор', title: 'Обзор финансов', hint: 'Главное о ваших доходах и расходах.', icon: 'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z' },
@@ -46,7 +47,7 @@ export function AppShell() {
     </header>
     <main className="app-content" id="app-main" tabIndex={-1}>
       <div className="page-heading"><h1>{section.title}</h1><p>{section.hint}</p></div>
-      <Outlet />
+      <PageBoundary key={location.pathname}><Suspense fallback={<p role="status">Загружаем раздел…</p>}><Outlet /></Suspense></PageBoundary>
     </main>
   </div>
 }
