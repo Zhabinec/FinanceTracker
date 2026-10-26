@@ -7,6 +7,7 @@ namespace Finance.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("password-recovery")]
+[RequestSizeLimit(16_384)]
 public sealed class EmailVerificationController(IEmailVerification handler,
     Finance.Infrastructure.Security.RecoveryEmailOptions options, IConfiguration configuration) : ControllerBase
 {

@@ -45,6 +45,9 @@ public sealed class ApiFixture : IAsyncLifetime
             builder.UseSetting("ConnectionStrings:Database", connectionString);
             builder.UseSetting("Jwt:SigningKey", "integration-test-signing-key-with-at-least-32-bytes");
             builder.UseSetting("Auth:RecoveryPermitLimit", "1000");
+            builder.UseSetting("Auth:LoginPermitLimit", "1000");
+            builder.UseSetting("Auth:RegistrationPermitLimit", "1000");
+            builder.UseSetting("Http:ApiPermitLimit", "10000");
             builder.UseSetting("Telegram:BotToken", TelegramTestData.BotToken);
             builder.UseSetting("Telegram:BotUsername", "test_finance_bot");
             builder.ConfigureTestServices(services =>

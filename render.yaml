@@ -1,0 +1,40 @@
+services:
+  - type: web
+    name: finance-tracker-zhabinec
+    runtime: docker
+    plan: free
+    region: frankfurt
+    branch: codex/platform-telegram
+    dockerfilePath: ./deploy/render.Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: PORT
+        value: '8080'
+      - key: Http__RedirectToHttps
+        value: 'false'
+      - key: Auth__SecureCookies
+        value: 'true'
+      - key: Hosting__UseRenderExternalUrl
+        value: 'true'
+      - key: Database__MigrateOnStartup
+        value: 'true'
+      - key: Jwt__SigningKey
+        generateValue: true
+      - key: ConnectionStrings__Database
+        sync: false
+      - key: Telegram__BotToken
+        sync: false
+      - key: Telegram__BotUsername
+        value: PetProjectFinanceBot
+      - key: Email__Provider
+        value: Resend
+      - key: Email__Endpoint
+        value: https://api.resend.com/emails
+      - key: Email__From
+        sync: false
+      - key: Email__ApiKey
+        sync: false

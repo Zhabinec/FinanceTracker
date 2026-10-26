@@ -41,6 +41,10 @@ jobs:
   end-to-end:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        hosting: [compose, render]
     env:
       JWT_SIGNING_KEY: ci-only-ephemeral-key-never-use-in-deployment-123456789
       TELEGRAM_BOT_TOKEN: 123456789:test-only-synthetic-bot-token-never-a-real-secret
@@ -61,6 +65,18 @@ jobs:
           TLS_CERT_DIR: /tmp/finance-config-validation
         run: docker compose -f compose.production.yaml config --quiet
       - run: docker compose up -d --build
+        if: matrix.hosting == 'compose'
+      - name: Build and start the combined Render image
+        if: matrix.hosting == 'render'
+        run: |
+          docker compose up -d postgres mailpit
+          docker build -f deploy/render.Dockerfile -t finance-render:ci .
+          docker run -d --name finance-render-ci --network finance-tracker_default -p 127.0.0.1:5180:8080 \
+            -e 'ConnectionStrings__Database=Host=postgres;Port=5432;Database=finance_tracker;Username=finance;Password=finance_dev' \
+            -e Jwt__SigningKey="$JWT_SIGNING_KEY" -e Telegram__BotToken="$TELEGRAM_BOT_TOKEN" \
+            -e Database__MigrateOnStartup=true -e Http__RedirectToHttps=false -e Auth__SecureCookies=false \
+            -e Hosting__UseRenderExternalUrl=true -e RENDER_EXTERNAL_URL=http://localhost:5180 \
+            -e Email__Provider=Mailpit -e Email__Endpoint=http://mailpit:8025/api/v1/send finance-render:ci
       - run: curl --fail --retry 30 --retry-delay 2 --retry-all-errors http://localhost:5180/health
       - run: npm ci
         working-directory: frontend
@@ -77,5 +93,7 @@ jobs:
             frontend/test-results
       - run: docker compose logs --no-color
         if: failure()
+      - run: docker logs finance-render-ci
+        if: failure() && matrix.hosting == 'render'
       - run: docker compose down
         if: always()

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json.Serialization;
 using Finance.Api.HealthChecks;
+using Finance.Api.Hosting;
 using Finance.Api.Security;
 using Finance.Application.Abstractions;
 using Finance.Application.Auth.Login;
@@ -30,6 +31,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = 65_536;
+    options.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(15);
+    options.Limits.MaxRequestHeadersTotalSize = 16_384;
+});
 
 var databaseConnectionString = builder.Configuration.GetConnectionString("Database")
     ?? throw new InvalidOperationException(
@@ -85,7 +92,9 @@ builder.Services.AddScoped<IPasswordRecoveryStore, PasswordRecoveryStore>();
 builder.Services.AddScoped<PasswordRecoveryHandler>();
 builder.Services.AddScoped<Finance.Application.Auth.Verification.IEmailVerification, Finance.Application.Auth.Verification.EmailVerificationHandler>();
 builder.Services.AddScoped<Finance.Application.Auth.Verification.IEmailVerificationStore, EmailVerificationStore>();
-var recoveryUrl = builder.Configuration["Auth:FrontendUrl"] ?? "http://localhost:5173";
+var recoveryUrl = builder.Configuration.GetValue<bool>("Hosting:UseRenderExternalUrl")
+    ? builder.Configuration["RENDER_EXTERNAL_URL"] ?? throw new InvalidOperationException("Render public URL is missing.")
+    : builder.Configuration["Auth:FrontendUrl"] ?? "http://localhost:5173";
 if (!Uri.TryCreate(recoveryUrl, UriKind.Absolute, out var frontendUri) || frontendUri.Scheme is not ("https" or "http"))
     throw new InvalidOperationException("Auth:FrontendUrl must be an absolute HTTP(S) URL.");
 builder.Services.AddSingleton(new PasswordRecoverySettings(recoveryUrl));
@@ -98,11 +107,31 @@ builder.Services.AddScoped<IRecoveryEmailSender>(services => services.GetRequire
 builder.Services.AddScoped<Finance.Application.Auth.Verification.IConfirmationEmailSender>(services => services.GetRequiredService<RecoveryEmailSender>());
 builder.Services.AddRateLimiter(options =>
 {
+    // Shared process budgets run before authentication and its database lookup.
+    // Do not partition by client-supplied forwarded headers or an unverified JWT subject.
+    options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
+        PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        {
+            if (!context.Request.Path.StartsWithSegments("/api") && context.Request.Path != "/health")
+                return RateLimitPartition.GetNoLimiter("static");
+            var health = context.Request.Path == "/health";
+            return RateLimitPartition.GetFixedWindowLimiter(health ? "health" : "api", _ => new FixedWindowRateLimiterOptions
+            { PermitLimit = health ? 60 : builder.Configuration.GetValue("Http:ApiPermitLimit", 600), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 });
+        }),
+        PartitionedRateLimiter.Create<HttpContext, string>(context => context.Request.Path.StartsWithSegments("/api")
+            ? RateLimitPartition.GetConcurrencyLimiter("api", _ => new ConcurrencyLimiterOptions
+            { PermitLimit = builder.Configuration.GetValue("Http:ApiConcurrencyLimit", 8), QueueLimit = 0 })
+            : RateLimitPartition.GetNoLimiter("static")),
+        PartitionedRateLimiter.Create<HttpContext, string>(context =>
+            HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Value?.TrimEnd('/').Equals("/api/auth/register", StringComparison.OrdinalIgnoreCase) == true
+            ? RateLimitPartition.GetFixedWindowLimiter("registration", _ => new FixedWindowRateLimiterOptions
+            { PermitLimit = builder.Configuration.GetValue("Auth:RegistrationPermitLimit", 20), Window = TimeSpan.FromMinutes(15), QueueLimit = 0 })
+            : RateLimitPartition.GetNoLimiter("other")));
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.OnRejected = async (context, cancellationToken) =>
     {
         var seconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
-            ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)) : 900;
+            ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)) : 2;
         context.HttpContext.Response.Headers.RetryAfter = seconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
         var problem = new Microsoft.AspNetCore.Mvc.ProblemDetails
         {
@@ -120,6 +149,9 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("telegram-auth", context => RateLimitPartition.GetFixedWindowLimiter(
         $"{context.Request.Path}:{context.Connection.RemoteIpAddress}", _ => new FixedWindowRateLimiterOptions
         { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("password-login", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = builder.Configuration.GetValue("Auth:LoginPermitLimit", 15), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
 builder.Services.AddSingleton<IClock, SystemClock>();
@@ -195,11 +227,12 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<Finance.Api.Errors.ApiExceptionHandler>();
 
 var app = builder.Build();
-if (builder.Configuration.GetValue<bool>("Database:MigrateOnly"))
+var migrateOnly = builder.Configuration.GetValue<bool>("Database:MigrateOnly");
+if (migrateOnly || builder.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<FinanceDbContext>().Database.MigrateAsync();
-    return;
+    if (migrateOnly) return;
 }
 
 app.Use(async (context, next) =>
@@ -222,9 +255,10 @@ if (app.Environment.IsDevelopment())
 }
 
 if (builder.Configuration.GetValue("Http:RedirectToHttps", true)) app.UseHttpsRedirection();
+app.UseHostedFrontend();
 
-app.UseAuthentication();
 app.UseRateLimiter();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

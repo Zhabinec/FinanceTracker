@@ -7,6 +7,7 @@ namespace Finance.Api.Controllers;
 [ApiController]
 [Route("api/auth")]
 [EnableRateLimiting("password-recovery")]
+[RequestSizeLimit(16_384)]
 public sealed class PasswordRecoveryController(PasswordRecoveryHandler handler, ILogger<PasswordRecoveryController> logger) : ControllerBase
 {
     public sealed record ForgotRequest(string? Email);

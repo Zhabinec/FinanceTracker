@@ -11,6 +11,7 @@ namespace Finance.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[RequestSizeLimit(16_384)]
 public sealed class AuthController(
     RegisterUserHandler registerUserHandler,
     LoginUserHandler loginUserHandler,
@@ -53,6 +54,7 @@ public sealed class AuthController(
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("password-login")]
     [ProducesResponseType<LoginResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login(
