@@ -33,6 +33,81 @@ async function confirmTestAccount(request: APIRequestContext, email: string) {
   expect((await request.post('/api/auth/confirm-email', { data: { token: decodeURIComponent(token) } })).status()).toBe(204)
 }
 
+test('monthly budgets track expenses on mobile and allow editing and removal', async ({ page, request }) => {
+  const email = `budget-${Date.now()}@example.com`
+  const password = 'Budget-password-123!'
+  await request.post('/api/auth/register', { data: { email, password } })
+  await confirmTestAccount(request, email)
+  const login = await (await request.post('/api/auth/login', { data: { email, password } })).json()
+  const headers = { Authorization: `Bearer ${login.accessToken}` }
+  const category = await (await request.post('/api/categories', { headers, data: { name: 'Продукты', type: 'Expense' } })).json()
+  await request.post('/api/transactions', { headers, data: { categoryId: category.id, type: 'Expense', amount: '25.01', occurredOn: '2026-10-31' } })
+  await page.goto('/login')
+  await page.getByLabel('Email', { exact: true }).fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(password)
+  await page.getByRole('button', { name: 'Войти', exact: true }).click()
+  await page.setViewportSize({ width: 390, height: 844 })
+  const panel = page.getByRole('region', { name: 'Бюджеты на месяц' })
+  await panel.getByLabel('Месяц бюджета').fill('2026-10')
+  await panel.getByText('Добавить лимит', { exact: true }).click()
+  await panel.getByLabel('Лимит (RUB)').fill('20')
+  await panel.getByRole('button', { name: 'Сохранить лимит' }).click()
+  await expect(panel.getByText('Превышение', { exact: false })).toContainText('5,01')
+  await panel.getByRole('button', { name: 'Изменить лимит' }).click()
+  await panel.getByLabel('Лимит (RUB)').fill('30')
+  await panel.getByRole('button', { name: 'Сохранить лимит' }).click()
+  await expect(panel.getByText('Осталось', { exact: false })).toContainText('4,99')
+  await page.reload()
+  await panel.getByLabel('Месяц бюджета').fill('2026-10')
+  await expect(panel.getByText('Осталось', { exact: false })).toContainText('4,99')
+  await panel.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: 'test-results/budgets-mobile.png', fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  page.once('dialog', dialog => dialog.accept())
+  await panel.getByRole('button', { name: 'Убрать лимит' }).click()
+  await expect(panel.getByText('Задайте лимит', { exact: false })).toBeVisible()
+  expect((await (await request.get('/api/transactions', { headers })).json()).totalCount).toBe(1)
+})
+
+test('CSV preview maps columns, rejects errors and prevents duplicate imports', async ({ page, request }) => {
+  const email = `import-${Date.now()}@example.com`
+  const password = 'Import-password-123!'
+  await request.post('/api/auth/register', { data: { email, password } })
+  await confirmTestAccount(request, email)
+  const login = await (await request.post('/api/auth/login', { data: { email, password } })).json()
+  const headers = { Authorization: `Bearer ${login.accessToken}` }
+  await request.post('/api/categories', { headers, data: { name: 'Продукты', type: 'Expense' } })
+  await page.goto('/login')
+  await page.getByLabel('Email', { exact: true }).fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(password)
+  await page.getByRole('button', { name: 'Войти', exact: true }).click()
+  await page.getByRole('link', { name: 'Операции', exact: true }).click()
+  await page.getByText('Импорт из CSV', { exact: true }).click()
+  await page.setViewportSize({ width: 390, height: 844 })
+  const panel = page.locator('.import-panel')
+  const content = 'Сумма;Категория;Дата;Описание\n25,01;Продукты;2026-10-25;"Чипсы; сыр"\n'
+  const upload = (text: string) => panel.getByLabel('CSV-файл').setInputFiles({ name: 'expenses.csv', mimeType: 'text/csv', buffer: Buffer.from(text, 'utf8') })
+  await upload(content.replace('25,01', '-1'))
+  await panel.getByRole('combobox', { name: 'Колонка даты', exact: true }).selectOption('2')
+  await panel.getByRole('combobox', { name: 'Колонка суммы', exact: true }).selectOption('0')
+  await panel.getByRole('combobox', { name: 'Колонка категории', exact: true }).selectOption('1')
+  await panel.getByRole('combobox', { name: 'Колонка описания', exact: true }).selectOption('3')
+  await panel.getByRole('button', { name: 'Предпросмотр CSV', exact: true }).click()
+  await expect(panel.getByText('Есть ошибки.', { exact: false })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Импортировать 1 операций' })).toBeDisabled()
+  await upload(content)
+  await panel.getByRole('button', { name: 'Предпросмотр CSV', exact: true }).click()
+  await expect(panel.getByText('Чипсы; сыр', { exact: true })).toBeVisible()
+  await page.screenshot({ path: 'test-results/import-mobile.png', fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await panel.getByRole('button', { name: 'Импортировать 1 операций' }).click()
+  await expect(panel.getByRole('status')).toHaveText('Импортировано операций: 1.')
+  await upload(content)
+  await panel.getByRole('button', { name: 'Предпросмотр CSV', exact: true }).click()
+  await expect(panel.getByText('Этот CSV уже импортирован.', { exact: false })).toBeVisible()
+  expect((await (await request.get('/api/transactions', { headers })).json()).totalCount).toBe(1)
+})
+
 test('recover password using a delivered one-time email link', async ({ page, request }) => {
   const email = `recovery-${Date.now()}@example.com`
   const original = 'Original-password-123!'

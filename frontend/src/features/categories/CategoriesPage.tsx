@@ -26,7 +26,7 @@ export function CategoriesPage() {
   const undoMutation = useMutation({
     mutationFn: (transaction: FinanceTransaction) => deleteTransaction(transaction.id, transaction.version),
     onSuccess: async () => {
-      await Promise.all(['transactions', 'dashboard', 'accounts'].map(key => queryClient.invalidateQueries({ queryKey: [key] })))
+      await Promise.all(['transactions', 'dashboard', 'accounts', 'budgets'].map(key => queryClient.invalidateQueries({ queryKey: [key] })))
       setAdded(null); setUndone(true)
     },
   })

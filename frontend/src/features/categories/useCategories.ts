@@ -34,6 +34,7 @@ export function useCategories() {
       queryClient.invalidateQueries({ queryKey: categoriesQueryKey }),
       queryClient.invalidateQueries({ queryKey: ['transactions'] }),
       queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['budgets'] }),
     ]),
   })
 

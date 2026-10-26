@@ -64,6 +64,10 @@ builder.Services.AddScoped<Finance.Application.Accounts.IAccountStore, AccountSt
 builder.Services.AddScoped<Finance.Application.Accounts.AccountHandler>();
 builder.Services.AddScoped<Finance.Application.Transfers.ITransferStore, TransferStore>();
 builder.Services.AddScoped<Finance.Application.Transfers.TransferHandler>();
+builder.Services.AddScoped<Finance.Application.Budgets.IBudgetStore, BudgetStore>();
+builder.Services.AddScoped<Finance.Application.Budgets.BudgetHandler>();
+builder.Services.AddScoped<Finance.Application.Imports.IImportStore, ImportStore>();
+builder.Services.AddScoped<Finance.Application.Imports.ImportHandler>();
 builder.Services.AddHttpClient("cbr-rates", client => { client.Timeout = TimeSpan.FromSeconds(10); client.MaxResponseContentBufferSize = 256_000; });
 builder.Services.AddSingleton<Finance.Application.Currencies.IExchangeRateProvider>(services =>
     new Finance.Infrastructure.Currencies.CbrExchangeRateProvider(

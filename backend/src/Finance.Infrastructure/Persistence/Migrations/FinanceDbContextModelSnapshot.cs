@@ -125,6 +125,49 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Finance.Domain.Budgets.MonthlyBudget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Limit")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateOnly>("Month")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId", "UserId", "Type");
+
+                    b.HasIndex("UserId", "Month", "CategoryId")
+                        .IsUnique();
+
+                    b.ToTable("monthly_budgets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_budgets_expense", "\"Type\" = 2");
+
+                            t.HasCheckConstraint("ck_budgets_month", "EXTRACT(DAY FROM \"Month\") = 1 AND \"Month\" >= DATE '1900-01-01' AND \"Month\" < DATE '9999-01-01'");
+
+                            t.HasCheckConstraint("ck_budgets_positive", "\"Limit\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Finance.Domain.Categories.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -156,6 +199,34 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("categories", (string)null);
+                });
+
+            modelBuilder.Entity("Finance.Domain.Transactions.ImportBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Fingerprint")
+                        .IsUnique();
+
+                    b.ToTable("import_batches", (string)null);
                 });
 
             modelBuilder.Entity("Finance.Domain.Transactions.Transaction", b =>
@@ -379,7 +450,26 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Finance.Domain.Budgets.MonthlyBudget", b =>
+                {
+                    b.HasOne("Finance.Domain.Categories.Category", null)
+                        .WithMany()
+                        .HasForeignKey("CategoryId", "UserId", "Type")
+                        .HasPrincipalKey("Id", "UserId", "Type")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Finance.Domain.Categories.Category", b =>
+                {
+                    b.HasOne("Finance.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Transactions.ImportBatch", b =>
                 {
                     b.HasOne("Finance.Domain.Users.User", null)
                         .WithMany()

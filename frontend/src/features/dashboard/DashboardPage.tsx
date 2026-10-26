@@ -9,6 +9,7 @@ import { todayInMoscow } from '../transactions/validation'
 import { formatDate } from '../../shared/formatting'
 import { CurrencySelector } from '../currencies/CurrencySelector'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
+import { BudgetsPanel } from '../budgets/BudgetsPanel'
 
 type Dashboard = {
   from: string; to: string; income: string; expense: string; result: string
@@ -48,6 +49,7 @@ export function DashboardPage() {
     </details>
     {query.isPending && <p role="status">Загружаем статистику…</p>}
     {query.isError && <div className="notice error">{getApiError(query.error, 'Не удалось загрузить статистику.')}</div>}
+    <BudgetsPanel />
     {data && <>
       <section className="summary-grid category-summary">
         {(['Income', 'Expense'] as const).map((type) => <article className="transactions-list-card" key={type}>

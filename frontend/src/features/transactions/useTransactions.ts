@@ -20,6 +20,7 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
       queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
       queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+      queryClient.invalidateQueries({ queryKey: ['budgets'] }),
     ]),
   })
 
@@ -35,6 +36,7 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
       queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
       queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
       queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+      queryClient.invalidateQueries({ queryKey: ['budgets'] }),
     ]),
     onError: () => queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
   })

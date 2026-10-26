@@ -10,6 +10,7 @@ import { useAuth } from '../auth/useAuth'
 import { TransactionRow } from './TransactionRow'
 import type { TransactionInput, TransactionQuery } from './transactionApi'
 import { useTransactions } from './useTransactions'
+import { ImportPanel } from '../imports/ImportPanel'
 import { toTransactionInput, todayInMoscow, transactionSchema, type TransactionForm } from './validation'
 
 export function TransactionsPage() {
@@ -81,6 +82,7 @@ export function TransactionsPage() {
     <section className="dashboard-shell transactions-page">
       <CurrencySelector />
       <div className="journal-actions"><Link className="primary-button link-button" to="/categories">Добавить по категории</Link></div>
+      <ImportPanel />
       <details className="panel-disclosure transaction-entry-disclosure"><summary>Запись с датой</summary>
       <section className="transaction-create-card">
         <div><p className="eyebrow">Новая операция</p><h2>Запишите движение денег</h2>
