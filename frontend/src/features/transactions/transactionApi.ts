@@ -15,6 +15,7 @@ export type FinanceTransaction = {
 }
 
 export type TransactionInput = {
+  requestId?: string
   accountId?: string
   categoryId: string
   type: CategoryType

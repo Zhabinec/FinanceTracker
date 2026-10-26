@@ -29,6 +29,7 @@ public sealed class TransactionsController(
 
     [HttpPost]
     [ProducesResponseType<TransactionDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType<TransactionDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
@@ -43,10 +44,11 @@ public sealed class TransactionsController(
                 request.Amount,
                 request.Description,
                 request.OccurredOn,
-                request.AccountId),
+                request.AccountId,
+                request.RequestId),
             cancellationToken);
 
-        return ToActionResult(result, StatusCodes.Status201Created);
+        return ToActionResult(result, result.Replayed ? StatusCodes.Status200OK : StatusCodes.Status201Created);
     }
 
     [HttpPut("{transactionId:guid}")]

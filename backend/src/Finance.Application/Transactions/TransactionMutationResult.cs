@@ -14,10 +14,11 @@ public enum TransactionMutationStatus
 public sealed record TransactionMutationResult(
     TransactionMutationStatus Status,
     TransactionDto? Transaction,
-    IReadOnlyDictionary<string, string[]> Errors)
+    IReadOnlyDictionary<string, string[]> Errors,
+    bool Replayed = false)
 {
-    public static TransactionMutationResult Success(TransactionDto transaction) =>
-        new(TransactionMutationStatus.Success, transaction, EmptyErrors);
+    public static TransactionMutationResult Success(TransactionDto transaction, bool replayed = false) =>
+        new(TransactionMutationStatus.Success, transaction, EmptyErrors, replayed);
 
     public static TransactionMutationResult Invalid(
         IReadOnlyDictionary<string, string[]> errors) =>

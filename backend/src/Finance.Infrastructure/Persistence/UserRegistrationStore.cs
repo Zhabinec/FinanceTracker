@@ -21,6 +21,8 @@ public sealed class UserRegistrationStore(FinanceDbContext dbContext) : IUserReg
         dbContext.Users.Add(user);
         var account = Finance.Domain.Accounts.Account.CreatePrimary(user.Id, user.BaseCurrency);
         dbContext.Accounts.Add(account);
+        var categories = Finance.Domain.Categories.StarterCategories.Create(user.Id);
+        dbContext.Categories.AddRange(categories);
 
         try
         {
@@ -36,6 +38,7 @@ public sealed class UserRegistrationStore(FinanceDbContext dbContext) : IUserReg
         {
             dbContext.Entry(user).State = EntityState.Detached;
             dbContext.Entry(account).State = EntityState.Detached;
+            foreach (var category in categories) dbContext.Entry(category).State = EntityState.Detached;
             return false;
         }
     }

@@ -16,6 +16,25 @@ public sealed class TransactionHandlersTests
         new(2026, 9, 21, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public async Task Create_RequestRetryAcrossMidnight_PreservesOriginalDateAndRejectsDifferentPayload()
+    {
+        var userId = Guid.NewGuid();
+        var category = Category.Create(userId, "Food", TransactionType.Expense);
+        var store = new FakeTransactionStore();
+        var clock = new FakeClock(new DateTimeOffset(2026, 10, 25, 20, 59, 0, TimeSpan.Zero));
+        var handler = new CreateTransactionHandler(new FakeCurrentUser(userId), new FakeCategoryStore(category), store, clock, new FakeAccountStore());
+        var command = new CreateTransactionCommand(category.Id, category.Type, 25m, " Чипсы ", null, RequestId: Guid.NewGuid());
+        var first = await handler.HandleAsync(command, CancellationToken.None);
+        clock.UtcNow = clock.UtcNow.AddMinutes(2);
+        var replay = await handler.HandleAsync(command with { Description = "Чипсы" }, CancellationToken.None);
+        Assert.True(replay.Replayed);
+        Assert.Equal(first.Transaction!.Id, replay.Transaction!.Id);
+        Assert.Equal(new DateOnly(2026, 10, 25), replay.Transaction.OccurredOn);
+        Assert.Single(store.Transactions);
+        await Assert.ThrowsAsync<Finance.Application.Common.ConflictException>(() => handler.HandleAsync(command with { Amount = 30m }, CancellationToken.None));
+    }
+
+    [Fact]
     public async Task Create_WithValidData_StoresUtcTransactionForMoscowDate()
     {
         var userId = Guid.NewGuid();
@@ -265,7 +284,7 @@ public sealed class TransactionHandlersTests
 
     private sealed class FakeClock(DateTimeOffset utcNow) : IClock
     {
-        public DateTimeOffset UtcNow { get; } = utcNow;
+        public DateTimeOffset UtcNow { get; set; } = utcNow;
     }
 
     private sealed class FakeCategoryStore(params Category[] categories) : ICategoryStore
@@ -300,6 +319,10 @@ public sealed class TransactionHandlersTests
     private sealed class FakeTransactionStore(params FinanceTransaction[] transactions)
         : ITransactionStore
     {
+        private readonly Dictionary<(Guid, Guid), TransactionRequest> requests = [];
+        public Task<TransactionRequest?> FindRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken) => Task.FromResult(requests.GetValueOrDefault((userId, requestId)));
+        public Task<TransactionRequest> AddOnceAsync(FinanceTransaction transaction, TransactionRequest request, CancellationToken cancellationToken)
+        { requests.Add((request.UserId, request.RequestId), request); Transactions.Add(transaction); Saves++; return Task.FromResult(request); }
         public List<FinanceTransaction> Transactions { get; } = [.. transactions];
         public int Saves { get; private set; }
         public Guid? LastListUserId { get; private set; }

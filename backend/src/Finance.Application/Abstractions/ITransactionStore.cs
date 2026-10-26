@@ -10,6 +10,8 @@ public sealed record TransactionRecord(
 
 public interface ITransactionStore
 {
+    Task<TransactionRequest?> FindRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken);
+    Task<TransactionRequest> AddOnceAsync(FinanceTransaction transaction, TransactionRequest request, CancellationToken cancellationToken);
     Task<TransactionRecordPage> ListByUserAsync(
         Guid userId,
         TransactionQuery query,

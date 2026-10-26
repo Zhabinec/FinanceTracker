@@ -1,5 +1,9 @@
 using Finance.Application.Abstractions;
 using Finance.Domain.Transactions;
+using Finance.Application.Common;
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace Finance.Application.Transactions.Create;
 
@@ -19,6 +23,7 @@ public sealed class CreateTransactionHandler(
             return TransactionMutationResult.Unauthorized();
         }
 
+        var requestedDate = command.OccurredOn;
         var createdAtUtc = clock.UtcNow;
         command = command with { OccurredOn = command.OccurredOn ?? MoscowDate.FromUtc(createdAtUtc) };
         var errors = TransactionValidation.Validate(
@@ -31,6 +36,17 @@ public sealed class CreateTransactionHandler(
         {
             return TransactionMutationResult.Invalid(errors);
         }
+
+        if (command.RequestId == Guid.Empty)
+            return TransactionMutationResult.Invalid(new Dictionary<string, string[]> { ["requestId"] = ["Нужен непустой идентификатор запроса."] });
+        var fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            command.CategoryId, command.Type, Amount = command.Amount.ToString("F2", CultureInfo.InvariantCulture),
+            Description = string.IsNullOrWhiteSpace(command.Description) ? null : command.Description.Trim(),
+            OccurredOn = requestedDate, AccountId = command.AccountId ?? userId
+        })));
+        if (command.RequestId is { } requestId && await transactionStore.FindRequestAsync(userId, requestId, cancellationToken) is { } existing)
+            return await ReplayAsync(existing, fingerprint, cancellationToken);
 
         var category = await categoryStore.FindOwnedAsync(
             command.CategoryId,
@@ -68,10 +84,30 @@ public sealed class CreateTransactionHandler(
             createdAtUtc);
 
         transaction.AssignAccount(account);
-        transactionStore.Add(transaction);
-        await transactionStore.SaveChangesAsync(cancellationToken);
+        if (command.RequestId is { } newRequestId)
+        {
+            var request = TransactionRequest.Create(userId, newRequestId, transaction.Id, fingerprint, createdAtUtc);
+            var saved = await transactionStore.AddOnceAsync(transaction, request, cancellationToken);
+            if (saved.TransactionId != transaction.Id) return await ReplayAsync(saved, fingerprint, cancellationToken);
+        }
+        else
+        {
+            // Older API clients remain supported; current clients always supply RequestId.
+            transactionStore.Add(transaction);
+            await transactionStore.SaveChangesAsync(cancellationToken);
+        }
 
         return TransactionMutationResult.Success(
             TransactionDto.From(transaction, category.Name));
+    }
+
+    private async Task<TransactionMutationResult> ReplayAsync(TransactionRequest request, string fingerprint, CancellationToken cancellationToken)
+    {
+        if (request.Fingerprint != fingerprint) throw new ConflictException("Этот запрос уже использован для другой операции.");
+        var transaction = await transactionStore.FindOwnedAsync(request.TransactionId, request.UserId, cancellationToken);
+        if (transaction is null) throw new ConflictException("Эта запись уже удалена. Повторная отправка не восстановит её.");
+        var category = await categoryStore.FindOwnedAsync(transaction.CategoryId, request.UserId, cancellationToken)
+            ?? throw new InvalidOperationException("Transaction category is missing.");
+        return TransactionMutationResult.Success(TransactionDto.From(transaction, category.Name), replayed: true);
     }
 }

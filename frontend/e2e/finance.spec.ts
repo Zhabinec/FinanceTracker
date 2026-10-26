@@ -33,6 +33,15 @@ async function confirmTestAccount(request: APIRequestContext, email: string) {
   expect((await request.post('/api/auth/confirm-email', { data: { token: decodeURIComponent(token) } })).status()).toBe(204)
 }
 
+async function ensureCategory(request: APIRequestContext, headers: Record<string, string>, name: string) {
+  const categories = await (await request.get('/api/categories', { headers })).json()
+  const existing = categories.find((category: { name: string; type: string }) => category.name === name && category.type === 'Expense')
+  if (existing) return existing
+  const response = await request.post('/api/categories', { headers, data: { name, type: 'Expense' } })
+  expect(response.status()).toBe(201)
+  return response.json()
+}
+
 test('monthly budgets track expenses on mobile and allow editing and removal', async ({ page, request }) => {
   const email = `budget-${Date.now()}@example.com`
   const password = 'Budget-password-123!'
@@ -40,7 +49,7 @@ test('monthly budgets track expenses on mobile and allow editing and removal', a
   await confirmTestAccount(request, email)
   const login = await (await request.post('/api/auth/login', { data: { email, password } })).json()
   const headers = { Authorization: `Bearer ${login.accessToken}` }
-  const category = await (await request.post('/api/categories', { headers, data: { name: 'Продукты', type: 'Expense' } })).json()
+  const category = await ensureCategory(request, headers, 'Продукты')
   await request.post('/api/transactions', { headers, data: { categoryId: category.id, type: 'Expense', amount: '25.01', occurredOn: '2026-10-31' } })
   await page.goto('/login')
   await page.getByLabel('Email', { exact: true }).fill(email)
@@ -50,6 +59,7 @@ test('monthly budgets track expenses on mobile and allow editing and removal', a
   const panel = page.getByRole('region', { name: 'Бюджеты на месяц' })
   await panel.getByLabel('Месяц бюджета').fill('2026-10')
   await panel.getByText('Добавить лимит', { exact: true }).click()
+  await panel.getByRole('combobox', { name: 'Категория бюджета', exact: true }).selectOption(category.id)
   await panel.getByLabel('Лимит (RUB)').fill('20')
   await panel.getByRole('button', { name: 'Сохранить лимит' }).click()
   await expect(panel.getByText('Превышение', { exact: false })).toContainText('5,01')
@@ -76,7 +86,7 @@ test('CSV preview maps columns, rejects errors and prevents duplicate imports', 
   await confirmTestAccount(request, email)
   const login = await (await request.post('/api/auth/login', { data: { email, password } })).json()
   const headers = { Authorization: `Bearer ${login.accessToken}` }
-  await request.post('/api/categories', { headers, data: { name: 'Продукты', type: 'Expense' } })
+  await ensureCategory(request, headers, 'Продукты')
   await page.goto('/login')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
@@ -173,6 +183,7 @@ test('native clipboard preserves exact text and replaces selections across forms
 })
 
 test('register, confirm email, record expenses, filter history and review finances', async ({ page, request }) => {
+  // This workflow crosses authentication, transfers, display currencies, edits, filters and account archiving.
   test.setTimeout(60_000)
   const email = `e2e-${Date.now()}@example.com`
   const category = `Продукты ${Date.now()}`
@@ -349,9 +360,12 @@ test('quick category entry has two fields, preserves drafts on errors and suppor
   await confirmTestAccount(request, email)
   const session = await (await request.post('/api/auth/login', { data: { email, password } })).json()
   const headers = { Authorization: `Bearer ${session.accessToken}` }
-  const category = await (await request.post('/api/categories', { headers, data: { name: 'Продукты', type: 'Expense' } })).json()
+  const starter = await (await request.get('/api/categories', { headers })).json()
+  expect(starter).toHaveLength(7)
+  const category = starter.find((item: { name: string }) => item.name === 'Продукты')
+  expect(category.type).toBe('Expense')
   for (const name of ['Транспорт', 'Кафе', 'Покупки для дома и повседневных нужд'])
-    expect((await request.post('/api/categories', { headers, data: { name, type: 'Expense' } })).status()).toBe(201)
+    await ensureCategory(request, headers, name)
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 })
     for (const path of ['/login', '/register', '/forgot-password', '/verify-email']) {
@@ -467,6 +481,33 @@ test('quick category entry has two fields, preserves drafts on errors and suppor
   await page.getByRole('button', { name: 'Отменить добавление', exact: true }).click()
   await expect(page.getByRole('status')).toHaveText('Добавление отменено.')
   expect((await (await request.get('/api/accounts', { headers })).json())[0].balance).toBe('0.00')
+
+  // The server commits, but the client loses the response. Retrying the unchanged form must reuse its request ID.
+  await opener.click()
+  await dialog.getByLabel('Название', { exact: true }).fill('Потерянный ответ')
+  await dialog.getByLabel('Сумма').fill('40')
+  const expenseRequestIds: string[] = []
+  await page.route('**/api/transactions', async route => {
+    if (route.request().method() !== 'POST') { await route.continue(); return }
+    expenseRequestIds.push(route.request().postDataJSON().requestId)
+    const response = await route.fetch()
+    if (expenseRequestIds.length === 1) { expect(response.status()).toBe(201); await route.abort('failed') }
+    else { expect(response.status()).toBe(200); await route.fulfill({ response }) }
+  })
+  await dialog.getByRole('button', { name: 'Добавить расход', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toBeVisible()
+  await expect(dialog.getByLabel('Название', { exact: true })).toHaveValue('Потерянный ответ')
+  await dialog.getByRole('button', { name: 'Добавить расход', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(expenseRequestIds).toHaveLength(2)
+  expect(expenseRequestIds[0]).toBeTruthy()
+  expect(expenseRequestIds[1]).toBe(expenseRequestIds[0])
+  expect((await (await request.get('/api/transactions', { headers })).json()).totalCount).toBe(1)
+  expect((await (await request.get('/api/accounts', { headers })).json())[0].balance).toBe('-40.00')
+  await page.unroute('**/api/transactions')
+  await page.getByRole('button', { name: 'Отменить добавление', exact: true }).click()
+  await expect(page.getByRole('status')).toHaveText('Добавление отменено.')
+  expect((await (await request.get('/api/transactions', { headers })).json()).totalCount).toBe(0)
 
   await opener.click()
   await dialog.getByLabel('Название', { exact: true }).fill('Печенье')

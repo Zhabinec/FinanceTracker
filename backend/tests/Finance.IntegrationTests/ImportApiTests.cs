@@ -14,7 +14,7 @@ public sealed partial class FinanceApiTests
         using var client = await User();
         var category = await Category(client);
         var categories = await client.GetFromJsonAsync<JsonElement>("/api/categories");
-        var name = categories[0].GetProperty("name").GetString();
+        var name = categories.EnumerateArray().Single(c => c.GetProperty("id").GetString() == category).GetProperty("name").GetString();
         var accountId = (await Accounts(client))[0].GetProperty("id").GetGuid();
         var content = $"Date;Amount;Category;Description\r\n01.10.2026;25,01;{name};\"Чипсы; сыр\"\r\n31.10.2026;10;{name};Молоко\r\n";
         var command = new ImportCommand(content, ";", accountId, new(0, 1, 2, 3, null), TransactionType.Expense);
@@ -44,7 +44,7 @@ public sealed partial class FinanceApiTests
         using var client = await User();
         using var other = await User();
         var category = await Category(client);
-        var name = (await client.GetFromJsonAsync<JsonElement>("/api/categories"))[0].GetProperty("name").GetString();
+        var name = (await client.GetFromJsonAsync<JsonElement>("/api/categories")).EnumerateArray().Single(c => c.GetProperty("id").GetString() == category).GetProperty("name").GetString();
         var accountId = (await Accounts(client))[0].GetProperty("id").GetGuid();
         var command = new ImportCommand($"Date;Amount;Category\n2026-10-25;1;{name}\n2026-02-30;-1;Unknown", ";", accountId, new(0, 1, 2, null, null), TransactionType.Expense);
         var preview = await Json(await client.PostAsJsonAsync("/api/imports/csv/preview", command));

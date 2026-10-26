@@ -8,6 +8,28 @@ namespace Finance.Infrastructure.Persistence;
 
 public sealed class TransactionStore(FinanceDbContext dbContext) : ITransactionStore
 {
+    public Task<Finance.Domain.Transactions.TransactionRequest?> FindRequestAsync(Guid userId, Guid requestId, CancellationToken cancellationToken) =>
+        dbContext.TransactionRequests.AsNoTracking().SingleOrDefaultAsync(r => r.UserId == userId && r.RequestId == requestId, cancellationToken);
+
+    public async Task<Finance.Domain.Transactions.TransactionRequest> AddOnceAsync(FinanceTransaction transaction,
+        Finance.Domain.Transactions.TransactionRequest request, CancellationToken cancellationToken)
+    {
+        dbContext.TransactionRequests.Add(request);
+        Add(transaction);
+        try
+        {
+            await SaveChangesAsync(cancellationToken);
+            return request;
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is Npgsql.PostgresException
+            { SqlState: Npgsql.PostgresErrorCodes.UniqueViolation, ConstraintName: "PK_transaction_requests" })
+        {
+            // SaveChangesAsync has disposed/rolled back its write transaction, including the attempted expense.
+            dbContext.ChangeTracker.Clear();
+            return await FindRequestAsync(request.UserId, request.RequestId, cancellationToken)
+                ?? throw new InvalidOperationException("Transaction request receipt disappeared.");
+        }
+    }
     public async Task<TransactionRecordPage> ListByUserAsync(
         Guid userId,
         TransactionQuery query,

@@ -15,6 +15,7 @@ export function QuickTransactionDialog({ category, accounts, accountsPending, ac
   const dialogRef = useRef<HTMLDialogElement>(null)
   const nameRef = useRef<HTMLInputElement>(null)
   const submitting = useRef(false)
+  const requestRef = useRef<{ signature: string; id: string } | null>(null)
   const client = useQueryClient()
   const [name, setName] = useState('')
   const [amount, setAmount] = useState('')
@@ -28,7 +29,7 @@ export function QuickTransactionDialog({ category, accounts, accountsPending, ac
   const selectedId = accountId ?? chooseQuickAccount(accounts, preferredId, userId)?.id ?? ''
   const selected = active.find(account => account.id === selectedId)
   const mutation = useMutation({ mutationFn: createTransaction,
-    onSuccess: () => Promise.all(['transactions', 'dashboard', 'accounts'].map(key => client.invalidateQueries({ queryKey: [key] }))),
+    onSuccess: () => Promise.all(['transactions', 'dashboard', 'accounts', 'budgets'].map(key => client.invalidateQueries({ queryKey: [key] }))),
   })
 
   useEffect(() => {
@@ -51,13 +52,16 @@ export function QuickTransactionDialog({ category, accounts, accountsPending, ac
     if (!selected) { setError('Выберите активный счёт.'); return }
     submitting.current = true
     try {
-      const transaction = await mutation.mutateAsync({ categoryId: category.id, type: category.type,
-        accountId: selected.id, amount: parsed.data.amount.replace(',', '.'), description: parsed.data.description })
+      const input = { categoryId: category.id, type: category.type, accountId: selected.id,
+        amount: parsed.data.amount.replace(',', '.'), description: parsed.data.description }
+      const signature = JSON.stringify(input)
+      if (requestRef.current?.signature !== signature) requestRef.current = { signature, id: crypto.randomUUID() }
+      const transaction = await mutation.mutateAsync({ ...input, requestId: requestRef.current.id })
       try { localStorage.setItem(storageKey, selected.id) } catch { /* Saving the operation does not depend on storage. */ }
       onSaved(transaction)
     } catch (failure) {
       setError(getApiError(failure, 'Не удалось добавить операцию. Проверьте историю перед повторной отправкой, если связь прервалась.'))
-      void client.invalidateQueries({ queryKey: ['accounts'] })
+      for (const key of ['transactions', 'dashboard', 'accounts', 'budgets']) void client.invalidateQueries({ queryKey: [key] })
       void client.invalidateQueries({ queryKey: ['categories'] })
     } finally { submitting.current = false }
   }
@@ -74,14 +78,14 @@ export function QuickTransactionDialog({ category, accounts, accountsPending, ac
       <button type="button" className="quick-close" aria-label="Закрыть" disabled={mutation.isPending} onClick={onClose}>×</button></div>
     <form onSubmit={event => void submit(event)} noValidate>
       {error && <div className="notice error" role="alert">{error}</div>}
-      <label>Название<input ref={nameRef} placeholder={category.type === 'Expense' ? 'Например, Чипсы' : 'Например, Подработка'}
+      <label>Название<input ref={nameRef} disabled={mutation.isPending} placeholder={category.type === 'Expense' ? 'Например, Чипсы' : 'Например, Подработка'}
         value={name} maxLength={500} onChange={event => { setName(event.target.value); setFields(previous => ({ ...previous, description: '' })) }} aria-invalid={Boolean(fields.description)} /></label>
       {fields.description && <p className="field-error" role="alert">{fields.description}</p>}
-      <label>Сумма ({selected?.currency ?? '—'})<input inputMode="decimal" placeholder="25,00" value={amount}
+      <label>Сумма ({selected?.currency ?? '—'})<input disabled={mutation.isPending} inputMode="decimal" placeholder="25,00" value={amount}
         onChange={event => { setAmount(event.target.value); setFields(previous => ({ ...previous, amount: '' })) }} aria-invalid={Boolean(fields.amount)} /></label>
       {fields.amount && <p className="field-error" role="alert">{fields.amount}</p>}
       {active.length > 1 || (!selected && active.length > 0) ? <details className="quick-account"><summary>Счёт: {selected?.name ?? 'выберите счёт'}</summary>
-        <label>Счёт<select value={selectedId} onChange={event => setAccountId(event.target.value)}>
+        <label>Счёт<select disabled={mutation.isPending} value={selectedId} onChange={event => setAccountId(event.target.value)}>
           {!selected && <option value={selectedId}>Счёт недоступен</option>}
           {active.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}
         </select></label></details> : selected && <p className="dashboard-note">Счёт: {selected.name}</p>}
