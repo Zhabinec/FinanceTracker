@@ -1,4 +1,4 @@
-#Requires -Version 7.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
 Checks a Telegram bot and saves its token in the API project's local .NET User Secrets.
@@ -17,16 +17,21 @@ if (-not (Test-Path -LiteralPath $financeApiProject)) { throw 'Не найден
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { throw 'Установите .NET SDK перед настройкой бота.' }
 
 $financeToken = $null
+$financeSecureToken = $null
 $financeSecretJson = $null
 $financeSecretOutput = $null
 $financeClient = $null
 $financeResponse = $null
 try {
-    $financeToken = (Read-Host 'Новый токен BotFather (ввод скрыт)' -MaskInput).Trim()
+    $financeSecureToken = Read-Host 'Новый токен BotFather (ввод скрыт)' -AsSecureString
+    $financeTokenPointer = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($financeSecureToken)
+    try { $financeToken = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($financeTokenPointer).Trim() }
+    finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($financeTokenPointer) }
     if ($financeToken -notmatch '^\d{5,20}:[A-Za-z0-9_-]{20,100}$') {
         throw 'Неверный формат токена. Скопируйте новый токен из BotFather полностью.'
     }
 
+    Add-Type -AssemblyName System.Net.Http
     $financeHandler = [Net.Http.HttpClientHandler]::new()
     $financeHandler.AllowAutoRedirect = $false
     $financeClient = [Net.Http.HttpClient]::new($financeHandler)
@@ -60,6 +65,7 @@ try {
 finally {
     if ($null -ne $financeResponse) { $financeResponse.Dispose() }
     if ($null -ne $financeClient) { $financeClient.Dispose() }
+    if ($null -ne $financeSecureToken) { $financeSecureToken.Dispose() }
     $financeToken = $null
     $financeSecretJson = $null
     $financeSecretOutput = $null

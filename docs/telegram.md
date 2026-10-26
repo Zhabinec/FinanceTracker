@@ -9,7 +9,7 @@
 1. Если токен попал в чат, исходники или другие доступные места, перевыпустить
    его в официальном [BotFather](https://t.me/BotFather): `/revoke`, выбрать бота
    и получить новый токен по подсказкам BotFather.
-2. В PowerShell 7 из корня репозитория выполнить:
+2. В Windows PowerShell 5.1 или PowerShell 7 из корня репозитория выполнить:
 
    ```powershell
    ./scripts/configure-telegram.ps1
