@@ -126,7 +126,12 @@ test('recover password using a delivered one-time email link', async ({ page, re
   await page.goto('/login')
   await page.getByRole('link', { name: 'Забыли пароль?' }).click()
   await page.getByLabel('Email', { exact: true }).fill(email)
+  const recoveryResponse = page.waitForResponse(response =>
+    new URL(response.url()).pathname === '/api/auth/forgot-password' && response.request().method() === 'POST')
   await page.getByRole('button', { name: 'Отправить ссылку' }).click()
+  const recovery = await recoveryResponse
+  expect(await recovery.text(), 'Recovery API must accept the request before the success screen is checked').toContain('message')
+  expect(recovery.status()).toBe(202)
   await expect(page.getByRole('status')).toContainText('Если аккаунт существует')
   const message = await accountMail(request, email, 'Восстановление пароля Finance Tracker')
   expect(message.Text).toContain(email)
