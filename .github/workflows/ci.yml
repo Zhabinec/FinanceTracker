@@ -46,6 +46,15 @@ jobs:
         with:
           node-version: '24'
       - run: docker compose config --quiet
+      - name: Validate production Compose configuration
+        env:
+          APP_VERSION: ci-validation
+          POSTGRES_PASSWORD: ci-only-config-validation
+          PUBLIC_URL: https://finance.example.com
+          EMAIL_FROM: finance@example.com
+          EMAIL_API_KEY: ci-only-config-validation
+          TLS_CERT_DIR: /tmp/finance-config-validation
+        run: docker compose -f compose.production.yaml config --quiet
       - run: docker compose up -d --build
       - run: curl --fail --retry 30 --retry-delay 2 --retry-all-errors http://localhost:5180/health
       - run: npm ci

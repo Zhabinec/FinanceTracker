@@ -31,6 +31,8 @@ TestResults/
 appsettings.Local.json
 appsettings.*.Local.json
 secrets.json
+*.dump
+deploy/certs/
 
 # Logs
 logs/

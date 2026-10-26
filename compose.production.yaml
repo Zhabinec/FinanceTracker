@@ -1,0 +1,84 @@
+name: finance-tracker-production
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: finance_tracker
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set a separate production database password}
+    volumes:
+      - production_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finance -d finance_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    image: finance-tracker-api:${APP_VERSION:?Set an immutable release tag}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["--Database:MigrateOnly=true"]
+    environment: &api-environment
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Database: Host=postgres;Port=5432;Database=finance_tracker;Username=finance;Password=${POSTGRES_PASSWORD:?Set production database password}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY:?Set a separate production JWT key}
+      Auth__SecureCookies: "true"
+      Auth__FrontendUrl: ${PUBLIC_URL:?Set the public HTTPS URL}
+      Http__RedirectToHttps: "false"
+      Email__Provider: Resend
+      Email__Endpoint: https://api.resend.com/emails
+      Email__From: ${EMAIL_FROM:?Set a verified sender address}
+      Email__ApiKey: ${EMAIL_API_KEY:?Set the email provider API key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    image: finance-tracker-api:${APP_VERSION:?Set an immutable release tag}
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment: *api-environment
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  frontend:
+    image: finance-tracker-web:${APP_VERSION:?Set an immutable release tag}
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - type: bind
+        source: ./deploy/nginx.production.conf
+        target: /etc/nginx/conf.d/default.conf
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${TLS_CERT_DIR:?Set the directory containing fullchain.pem and privkey.pem}
+        target: /etc/nginx/tls
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  production_postgres_data:
