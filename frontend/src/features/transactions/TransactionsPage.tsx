@@ -3,7 +3,6 @@ import { useForm, useWatch } from 'react-hook-form'
 import { useQuery } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAccounts } from '../accounts/accountApi'
-import { CurrencySelector } from '../currencies/CurrencySelector'
 import { getApiError } from '../../api/apiError'
 import { getCategories } from '../categories/categoryApi'
 import { useAuth } from '../auth/useAuth'
@@ -80,13 +79,12 @@ export function TransactionsPage() {
 
   return (
     <section className="dashboard-shell transactions-page">
-      <CurrencySelector />
       <div className="journal-actions"><Link className="primary-button link-button" to="/categories">Добавить по категории</Link></div>
       <ImportPanel />
       <details className="panel-disclosure transaction-entry-disclosure"><summary>Запись с датой</summary>
       <section className="transaction-create-card">
         <div><p className="eyebrow">Новая операция</p><h2>Запишите движение денег</h2>
-          <p>Дата считается по Москве, а категория определяет, доход это или расход.</p></div>
+        </div>
         <form className="transaction-create-form" onSubmit={submit} noValidate>
           {serverError && <div className="notice error form-wide">{serverError}</div>}
           <label>Счёт<select {...register('accountId')} disabled={accountsQuery.isPending}>

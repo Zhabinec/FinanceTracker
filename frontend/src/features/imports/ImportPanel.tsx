@@ -43,7 +43,7 @@ export function ImportPanel() {
     finally { submitting.current = false; setBusy(false) }
   }
   return <details className="panel-disclosure import-panel"><summary>Импорт из CSV</summary>
-    <p className="dashboard-note">Экспортируйте Excel или другую программу в CSV. Файл должен содержать заголовки, дату, положительную сумму и название вашей категории. Все суммы — в валюте выбранного счёта. До сохранения вы увидите предпросмотр.</p>
+    <p className="dashboard-note">Выберите CSV-файл и проверьте операции перед загрузкой.</p>
     <a className="text-button" href="/import-example.csv" download>Скачать пример CSV</a>
     {error && <div className="notice error" role="alert">{error}</div>}
     {notice && <div className="notice success" role="status">{notice}</div>}
@@ -80,7 +80,6 @@ export function ImportPanel() {
     <button className="ghost-button" disabled={busy || !content || !active.some(a => a.id === input.accountId)} onClick={() => void execute(false)}>{busy ? 'Обрабатываем…' : 'Предпросмотр CSV'}</button>
     {preview && <section aria-label="Предпросмотр CSV" className="import-preview">
       <h3>{fileName} · {preview.rows.length} операций · {preview.currency}</h3>
-      <p className="dashboard-note">Дата: ГГГГ-ММ-ДД, ДД.ММ.ГГГГ или ДД/ММ/ГГГГ. Тип: Доход/Расход или Income/Expense. Неизвестную категорию нужно сначала создать в разделе «Категории».</p>
       {preview.alreadyImported && <div className="notice error" role="alert">Этот CSV уже импортирован. Повторная загрузка заблокирована.</div>}
       {!preview.canApply && !preview.alreadyImported && <div className="notice error" role="alert">Есть ошибки. Исправьте файл или колонки и повторите предпросмотр. Ничего не сохранено.</div>}
       <ol className="import-rows">{preview.rows.map(row => <li key={row.row} className={row.errors.length ? 'invalid' : ''}>

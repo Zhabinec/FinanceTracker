@@ -7,7 +7,6 @@ import { useAuth } from '../auth/useAuth'
 import type { FinanceTransaction } from '../transactions/transactionApi'
 import { todayInMoscow } from '../transactions/validation'
 import { formatDate } from '../../shared/formatting'
-import { CurrencySelector } from '../currencies/CurrencySelector'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { BudgetsPanel } from '../budgets/BudgetsPanel'
 
@@ -36,7 +35,6 @@ export function DashboardPage() {
       <article className="transactions-list-card"><h2>Результат периода</h2><strong className="summary-value">{data ? money(data.result) : '—'}</strong>
         <p>{!data ? 'Ожидаем данные' : data.result.startsWith('-') ? 'Расходы превысили доходы' : data.result === '0.00' ? 'Доходы равны расходам' : 'Доходы превысили расходы'}</p></article>
     </section>
-    <CurrencySelector />
     <details className="panel-disclosure dashboard-period"><summary>Период <span>{formatDate(period.from)} — {formatDate(period.to)}</span></summary>
     <section className="transactions-list-card">
       <div className="transaction-filters">
@@ -44,7 +42,6 @@ export function DashboardPage() {
         <label>По дату<input type="date" value={period.to} onChange={(event) => setPeriod({ ...period, to: event.target.value })} /></label>
         <button className="ghost-button" onClick={() => setPeriod({ from: `${today.slice(0, 7)}-01`, to: today })}>Текущий месяц</button>
       </div>
-      <p className="dashboard-note">Границы периода — по Москве. Результат показывает разницу доходов и расходов за период.</p>
     </section>
     </details>
     {query.isPending && <p role="status">Загружаем статистику…</p>}

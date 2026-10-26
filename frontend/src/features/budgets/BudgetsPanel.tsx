@@ -58,7 +58,6 @@ export function BudgetsPanel() {
     <div className="budgets-header"><h2 id="budgets-title">Бюджеты на месяц</h2>
       <label>Месяц бюджета<input type="month" min="1900-01" max="9998-12" value={month} disabled={busy}
         onChange={event => { setMonth(event.target.value); clear(); setError(''); setNotice('') }} /></label></div>
-    <p className="dashboard-note">Расходы за весь выбранный месяц по Москве, включая записанные будущие даты. Переводы не учитываются. Период обзора выше не меняет месяц бюджета.</p>
     {notice && <div className="notice success" role="status">{notice}</div>}
     {error && <div className="notice error" role="alert">{error}</div>}
     {!month && <p>Выберите месяц бюджета.</p>}

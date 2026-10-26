@@ -1,17 +1,12 @@
-import { formatDate } from '../../shared/formatting'
 import { useCurrencyDisplay, type DisplayCurrency } from './currencyDisplayContext'
 
 export function CurrencySelector() {
   const display = useCurrencyDisplay()
-  return <section className="currency-display" aria-label="Настройки отображения валюты">
-    <label>Валюта отображения<select value={display.currency} onChange={event => display.setCurrency(event.target.value as DisplayCurrency)}>
-      <option value="RUB">RUB · Рубль</option><option value="USD">USD · Доллар</option><option value="EUR">EUR · Евро</option>
-    </select></label>
-    <p className="dashboard-note">Справочный пересчёт. Операции вводятся в валюте счёта.
-      {display.pending && ' Получаем курс; пока показаны исходные суммы.'}
-      {display.rateDate && <> Справочный курс <a href="https://www.cbr.ru/currency_base/daily/" target="_blank" rel="noreferrer">ЦБ РФ</a> на {formatDate(display.rateDate)}. Это не курс обмена банка.</>}
-    </p>
-    {display.error && <div className="notice error" role="alert">Курс недоступен для пересчёта. Суммы показаны в исходной валюте.
+  return <div className="currency-display">
+    <select aria-label="Валюта отображения" aria-busy={display.pending} value={display.currency} onChange={event => display.setCurrency(event.target.value as DisplayCurrency)}>
+      <option value="RUB">RUB</option><option value="USD">USD</option><option value="EUR">EUR</option>
+    </select>
+    {display.error && <div className="currency-error" role="alert">Не удалось переключить валюту.
       <button className="text-button" onClick={display.retry}>Повторить</button></div>}
-  </section>
+  </div>
 }

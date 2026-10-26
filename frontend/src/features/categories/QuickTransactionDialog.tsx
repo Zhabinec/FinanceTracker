@@ -72,7 +72,6 @@ export function QuickTransactionDialog({ category, accounts, accountsPending, ac
     <div className="quick-dialog-heading"><div><p className="eyebrow">{category.type === 'Expense' ? 'Новый расход' : 'Новый доход'}</p>
       <h2 id="quick-entry-title">{category.name}</h2></div>
       <button type="button" className="quick-close" aria-label="Закрыть" disabled={mutation.isPending} onClick={onClose}>×</button></div>
-    <p className="dashboard-note">Дата — сегодня по Москве. Сумма в {selected?.currency ?? 'валюте счёта'}.</p>
     <form onSubmit={event => void submit(event)} noValidate>
       {error && <div className="notice error" role="alert">{error}</div>}
       <label>Название<input ref={nameRef} placeholder={category.type === 'Expense' ? 'Например, Чипсы' : 'Например, Подработка'}

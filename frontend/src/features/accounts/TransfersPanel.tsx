@@ -55,7 +55,6 @@ export function TransfersPanel({ accounts, pending }: { accounts: MoneyAccount[]
 
   return <>
     <details className="panel-disclosure transfer-create"><summary>Перевод между счетами</summary>
-      <p className="dashboard-note">Переместите деньги между своими счетами. Перевод не считается доходом или расходом. Дата — сегодня по Москве.</p>
       {pending ? <p role="status">Загружаем счета…</p> : active.length < 2 ?
         <p>Для перевода нужны два активных счёта. Добавьте второй через «Новый счёт».</p> :
         <form className="transfer-form" onSubmit={event => void submit(event)} noValidate>
