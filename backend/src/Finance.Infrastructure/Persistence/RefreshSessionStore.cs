@@ -16,7 +16,7 @@ public sealed class RefreshSessionStore(FinanceDbContext dbContext) : IRefreshSe
         DateTimeOffset nowUtc, DateTimeOffset newExpiresAtUtc,
         CancellationToken cancellationToken)
     {
-        var ownerId = await dbContext.RefreshSessions.AsNoTracking().Where(session => session.TokenHash == currentTokenHash)
+        var ownerId = await dbContext.RefreshSessions.AsNoTracking().Where(session => session.TokenHash == currentTokenHash && session.TelegramLinkVersion == null)
             .Select(session => (Guid?)session.UserId).SingleOrDefaultAsync(cancellationToken);
         if (ownerId is null) return null;
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
@@ -28,7 +28,7 @@ public sealed class RefreshSessionStore(FinanceDbContext dbContext) : IRefreshSe
         var current = await dbContext.RefreshSessions
             .FromSqlInterpolated($"SELECT * FROM refresh_sessions WHERE \"TokenHash\" = {currentTokenHash} FOR UPDATE")
             .SingleOrDefaultAsync(cancellationToken);
-        if (current is null || current.UserId != user.Id || current.RevokedAtUtc is not null || current.ExpiresAtUtc <= nowUtc || current.SecurityStamp != user.SecurityStamp)
+        if (current is null || current.TelegramLinkVersion is not null || current.UserId != user.Id || current.RevokedAtUtc is not null || current.ExpiresAtUtc <= nowUtc || current.SecurityStamp != user.SecurityStamp)
             return null;
         current.Revoke(nowUtc);
         dbContext.RefreshSessions.Add(RefreshSession.Create(current.UserId, newTokenHash, nowUtc, newExpiresAtUtc, user.SecurityStamp));

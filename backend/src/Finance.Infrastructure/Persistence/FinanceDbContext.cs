@@ -9,6 +9,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
+    public DbSet<TelegramAccountLink> TelegramAccountLinks => Set<TelegramAccountLink>();
     public DbSet<Finance.Domain.Transactions.TransactionRequest> TransactionRequests => Set<Finance.Domain.Transactions.TransactionRequest>();
     public DbSet<Finance.Domain.Transactions.ImportBatch> ImportBatches => Set<Finance.Domain.Transactions.ImportBatch>();
     public DbSet<Finance.Domain.Budgets.MonthlyBudget> MonthlyBudgets => Set<Finance.Domain.Budgets.MonthlyBudget>();

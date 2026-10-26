@@ -5,3 +5,5 @@
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
+.telegram-app body { padding-top: max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px)); }
+.telegram-app .app-navigation { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-content-safe-area-inset-bottom, 0px)); }

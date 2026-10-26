@@ -33,6 +33,8 @@ services:
       Email__Endpoint: https://api.resend.com/emails
       Email__From: ${EMAIL_FROM:?Set a verified sender address}
       Email__ApiKey: ${EMAIL_API_KEY:?Set the email provider API key}
+      Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
+      Telegram__BotUsername: ${TELEGRAM_BOT_USERNAME:-PetProjectFinanceBot}
     depends_on:
       postgres:
         condition: service_healthy

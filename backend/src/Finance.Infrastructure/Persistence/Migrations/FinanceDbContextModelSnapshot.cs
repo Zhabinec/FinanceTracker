@@ -388,6 +388,9 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SecurityStamp")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("TelegramLinkVersion")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("TokenHash")
                         .IsRequired()
                         .HasMaxLength(64)
@@ -404,6 +407,32 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.HasIndex("UserId", "ExpiresAtUtc");
 
                     b.ToTable("refresh_sessions", (string)null);
+                });
+
+            modelBuilder.Entity("Finance.Domain.Users.TelegramAccountLink", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("LinkedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("TelegramUserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("TelegramUserId")
+                        .IsUnique();
+
+                    b.ToTable("telegram_account_links", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_telegram_user_id_positive", "\"TelegramUserId\" > 0 AND \"TelegramUserId\" <= 4503599627370495");
+                        });
                 });
 
             modelBuilder.Entity("Finance.Domain.Users.User", b =>
@@ -558,6 +587,15 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Users.TelegramAccountLink", b =>
+                {
+                    b.HasOne("Finance.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

@@ -43,6 +43,8 @@ jobs:
     timeout-minutes: 20
     env:
       JWT_SIGNING_KEY: ci-only-ephemeral-key-never-use-in-deployment-123456789
+      TELEGRAM_BOT_TOKEN: 123456789:test-only-synthetic-bot-token-never-a-real-secret
+      E2E_TELEGRAM: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

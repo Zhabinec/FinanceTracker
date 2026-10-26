@@ -17,6 +17,8 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) : I
             problem = new ProblemDetails { Status = 409, Title = exception.Message };
         else if (exception is Finance.Domain.Common.DomainException)
             problem = new ProblemDetails { Status = 400, Title = exception.Message };
+        else if (exception is TelegramAuthenticationException)
+            problem = new ProblemDetails { Status = 401, Title = exception.Message };
         else if (exception is UnauthorizedAccessException)
             problem = new ProblemDetails { Status = 401, Title = "Authentication is required." };
         else if (exception is Finance.Application.Currencies.ExchangeRatesUnavailableException)

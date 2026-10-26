@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
+import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { telegramBackButton } from '../platform/telegram'
 import { useAuth } from '../features/auth/useAuth'
 import { PageBoundary } from './PageBoundary'
 import { CurrencySelector } from '../features/currencies/CurrencySelector'
@@ -21,6 +22,15 @@ export function AppShell() {
   const { signOut } = useAuth()
   const [leaving, setLeaving] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    const button = telegramBackButton()
+    if (!button) return
+    const back = () => navigate('/')
+    if (location.pathname === '/') button.hide()
+    else { button.show(); button.onClick(back) }
+    return () => { button.offClick(back); button.hide() }
+  }, [location.pathname, navigate])
   const section = sections.find(item => item.path === location.pathname) ?? sections[0]
   useEffect(() => {
     document.title = `${section.title} · Finance Tracker`

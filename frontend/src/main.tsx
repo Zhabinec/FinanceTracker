@@ -6,11 +6,13 @@ import { AuthProvider } from './features/auth/AuthProvider'
 import { CurrencyDisplayProvider } from './features/currencies/CurrencyDisplayProvider'
 import './index.css'
 import App from './App'
+import { initializeTelegram } from './platform/telegram'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
 })
 
+await initializeTelegram()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

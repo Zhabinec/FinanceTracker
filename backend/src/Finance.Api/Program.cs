@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Finance.Application.Auth.Register;
 using Finance.Application.Auth.Refresh;
 using Finance.Application.Auth.Logout;
+using Finance.Application.Auth.Telegram;
 using Finance.Application.Users.GetCurrent;
 using Finance.Application.Categories.Create;
 using Finance.Application.Categories.Deactivate;
@@ -76,6 +77,10 @@ builder.Services.AddSingleton<Finance.Application.Currencies.IExchangeRateProvid
 builder.Services.AddScoped<Finance.Application.Dashboard.IDashboardStore, DashboardStore>();
 builder.Services.AddScoped<Finance.Application.Dashboard.DashboardHandler>();
 builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
+builder.Services.AddSingleton(new TelegramSettings(builder.Configuration["Telegram:BotToken"] ?? "", builder.Configuration["Telegram:BotUsername"] ?? "PetProjectFinanceBot"));
+builder.Services.AddSingleton<ITelegramInitDataVerifier, TelegramInitDataVerifier>();
+builder.Services.AddScoped<ITelegramAuthStore, TelegramAuthStore>();
+builder.Services.AddScoped<TelegramAuthHandler>();
 builder.Services.AddScoped<IPasswordRecoveryStore, PasswordRecoveryStore>();
 builder.Services.AddScoped<PasswordRecoveryHandler>();
 builder.Services.AddScoped<Finance.Application.Auth.Verification.IEmailVerification, Finance.Application.Auth.Verification.EmailVerificationHandler>();
@@ -112,6 +117,9 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("password-recovery", context => RateLimitPartition.GetFixedWindowLimiter(
         $"{context.Request.Path.Value?.TrimEnd('/').ToLowerInvariant()}:{context.Connection.RemoteIpAddress}", _ => new FixedWindowRateLimiterOptions
         { PermitLimit = builder.Configuration.GetValue("Auth:RecoveryPermitLimit", 10), Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
+    options.AddPolicy("telegram-auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        $"{context.Request.Path}:{context.Connection.RemoteIpAddress}", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
 builder.Services.AddSingleton<IClock, SystemClock>();
@@ -119,6 +127,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton<IAccessTokenProvider, JwtAccessTokenProvider>();
+builder.Services.AddSingleton<ITelegramAccessTokenProvider, JwtAccessTokenProvider>();
 builder.Services.AddSingleton<IRefreshTokenProtector, RefreshTokenProtector>();
 builder.Services.AddSingleton(new RefreshTokenSettings(refreshTokenLifetimeDays));
 builder.Services.AddScoped<RefreshCookieService>();
@@ -152,7 +161,15 @@ builder.Services
                 var store = context.HttpContext.RequestServices.GetRequiredService<IUserProfileStore>();
                 var user = await store.FindByIdAsync(userId, context.HttpContext.RequestAborted);
                 if (user is null || user.EmailConfirmedAtUtc is null || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
-                    context.Fail("Session is no longer valid.");
+                { context.Fail("Session is no longer valid."); return; }
+                var telegramVersion = context.Principal?.FindFirst("telegram_link")?.Value;
+                if (telegramVersion is not null)
+                {
+                    var links = context.HttpContext.RequestServices.GetRequiredService<ITelegramAuthStore>();
+                    var link = await links.FindLinkAsync(userId, context.HttpContext.RequestAborted);
+                    if (!Guid.TryParse(telegramVersion, out var version) || link?.Version != version)
+                        context.Fail("Telegram was disconnected.");
+                }
             }
         };
         options.TokenValidationParameters = new TokenValidationParameters

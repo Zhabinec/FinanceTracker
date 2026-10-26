@@ -4,10 +4,13 @@ import * as authApi from './authApi'
 import type { CurrentUser } from './authApi'
 import { AuthContext, type AuthContextValue, type AuthStatus } from './authContext'
 import { setSessionExpiredHandler } from '../../api/http'
+import { isTelegram, telegramLaunchError } from '../../platform/telegram'
+import { getApiError } from '../../api/apiError'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [user, setUser] = useState<CurrentUser | null>(null)
+  const [restoreError, setRestoreError] = useState('')
   const queryClient = useQueryClient()
 
   useEffect(() => {
@@ -28,16 +31,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser)
         setStatus('authenticated')
       })
-      .catch(() => { if (active) setStatus('anonymous') })
+      .catch((error: unknown) => {
+        if (!active) return
+        if (isTelegram() && !(error instanceof authApi.TelegramLinkRequired))
+          setRestoreError(telegramLaunchError() || getApiError(error, 'Не удалось войти через Telegram. Попробуйте ещё раз.'))
+        setStatus('anonymous')
+      })
     return () => { active = false }
   }, [])
 
   const value = useMemo<AuthContextValue>(() => ({
     status,
     user,
+    restoreError,
     async signIn(email, password) {
       const currentUser = await authApi.login(email, password)
       setUser(currentUser)
+      setRestoreError('')
       setStatus('authenticated')
     },
     async signOut() {
@@ -48,10 +58,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         queryClient.clear()
         setUser(null)
+        setRestoreError('')
         setStatus('anonymous')
       }
     },
-  }), [queryClient, status, user])
+  }), [queryClient, status, user, restoreError])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

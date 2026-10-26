@@ -56,7 +56,7 @@ try {
     }
 
     # JSON is passed on stdin rather than putting the secret in process arguments or a repository file.
-    $financeSecretJson = @{ 'Telegram:BotToken' = $financeToken } | ConvertTo-Json -Compress
+    $financeSecretJson = @{ 'Telegram:BotToken' = $financeToken; 'Telegram:BotUsername' = $financeBot.result.username } | ConvertTo-Json -Compress
     $financeSecretOutput = $financeSecretJson | & dotnet user-secrets set --project $financeApiProject 2>&1
     if ($LASTEXITCODE -ne 0) { throw 'Не удалось сохранить токен в локальных .NET User Secrets.' }
     Write-Host ('Проверен бот @{0}. Токен сохранён в локальных секретах Finance.Api.' -f $financeBot.result.username)

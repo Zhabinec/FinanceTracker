@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test'
+import { createHmac } from 'node:crypto'
 
 test.use({ timezoneId: 'America/Los_Angeles' })
 const generatedMailIds = new Set<string>()
@@ -41,6 +42,53 @@ async function ensureCategory(request: APIRequestContext, headers: Record<string
   expect(response.status()).toBe(201)
   return response.json()
 }
+
+test('Telegram links an existing account, restores shared history, rotates session and disconnects', async ({ page, request, context }) => {
+  test.skip(process.env.E2E_TELEGRAM !== 'true', 'Requires an API configured with the synthetic test bot, never the real bot token')
+  const email = `telegram-${Date.now()}@example.com`
+  const password = 'Telegram-password-123!'
+  expect((await request.post('/api/auth/register', { data: { email, password } })).status()).toBe(201)
+  await confirmTestAccount(request, email)
+  const login = await (await request.post('/api/auth/login', { data: { email, password } })).json()
+  const headers = { Authorization: `Bearer ${login.accessToken}` }
+  const category = await ensureCategory(request, headers, 'Продукты')
+  expect((await request.post('/api/transactions', { headers, data: { categoryId: category.id, type: 'Expense', amount: '25', occurredOn: '2026-10-26', description: 'Telegram shared history' } })).status()).toBe(201)
+  const fields = { auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id: Date.now(), first_name: 'Test' }) }
+  const secret = createHmac('sha256', 'WebAppData').update('123456789:test-only-synthetic-bot-token-never-a-real-secret').digest()
+  const hash = createHmac('sha256', secret).update(Object.entries(fields).map(([key, value]) => `${key}=${value}`).join('\n')).digest('hex')
+  const initData = new URLSearchParams({ ...fields, hash }).toString()
+  await context.clearCookies()
+  await page.addInitScript(data => {
+    window.Telegram = { WebApp: { initData: data, ready() {}, expand() {}, BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} } } }
+  }, initData)
+  const firstLaunch = page.waitForResponse(response => response.url().endsWith('/api/auth/telegram/login'))
+  await page.goto('/')
+  expect((await firstLaunch).status()).toBe(200)
+  await expect(page.getByRole('heading', { name: 'Подключить Telegram' })).toBeVisible()
+  await page.getByLabel('Email', { exact: true }).fill(email)
+  await page.getByLabel('Пароль', { exact: true }).fill(password)
+  await page.getByRole('button', { name: 'Привязать аккаунт' }).click()
+  await page.getByRole('link', { name: 'История', exact: true }).click()
+  await expect(page.getByText('Telegram shared history', { exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.reload()
+  await expect(page.getByText('Telegram shared history', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  // Force access expiry once, then exercise the real rotating Telegram refresh endpoint.
+  await page.route('**/api/categories**', async route => { await route.fulfill({ status: 401, json: {} }); await page.unroute('**/api/categories**') }, { times: 1 })
+  const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/telegram/refresh'))
+  await page.getByRole('link', { name: 'Категории', exact: true }).click()
+  expect((await refresh).status()).toBe(200)
+  await expect(page.getByRole('heading', { name: 'Категории', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Аккаунт', exact: true }).click()
+  await expect(page.getByText('Аккаунт подключён.', { exact: true })).toBeVisible()
+  await page.screenshot({ path: 'test-results/telegram-mobile.png', fullPage: true })
+  expect(await context.cookies()).toHaveLength(0)
+  await page.getByRole('button', { name: 'Отключить Telegram' }).click()
+  await expect(page.getByRole('heading', { name: 'Подключить Telegram' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Подключить Telegram' })).toBeVisible()
+})
 
 test('monthly budgets track expenses on mobile and allow editing and removal', async ({ page, request }) => {
   const email = `budget-${Date.now()}@example.com`
