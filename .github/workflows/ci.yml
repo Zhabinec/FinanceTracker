@@ -10,6 +10,7 @@ permissions:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -21,6 +22,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: frontend
@@ -38,6 +40,7 @@ jobs:
 
   end-to-end:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       JWT_SIGNING_KEY: ci-only-ephemeral-key-never-use-in-deployment-123456789
     steps:
