@@ -128,7 +128,8 @@ export function TransactionRow({
           {transaction.type === 'Income' ? '+' : '−'}
         </span>
         <div><strong>{transaction.description || transaction.categoryName}</strong>
-          <span>{transaction.categoryName} · {accounts.find(a => a.id === transaction.accountId)?.name ?? 'Счёт'} · {date}</span></div>
+          <span>{transaction.categoryName} · {accounts.find(a => a.id === transaction.accountId)?.name ?? 'Счёт'}</span>
+          <time dateTime={transaction.occurredOn}>{date}</time></div>
       </div>
       <strong className={`transaction-amount ${transaction.type.toLowerCase()}`}>
         {transaction.type === 'Income' ? '+' : '−'}{amount}

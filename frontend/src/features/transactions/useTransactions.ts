@@ -14,16 +14,6 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
     queryFn: ({ signal }) => transactionApi.getTransactions(query, signal),
   })
 
-  const createMutation = useMutation({
-    mutationFn: transactionApi.createTransaction,
-    onSuccess: () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-      queryClient.invalidateQueries({ queryKey: ['accounts'] }),
-      queryClient.invalidateQueries({ queryKey: ['budgets'] }),
-    ]),
-  })
-
   const actionMutation = useMutation({
     mutationFn: async (action: TransactionAction) => {
       if (action.kind === 'update') {
@@ -43,7 +33,6 @@ export function useTransactions(query: transactionApi.TransactionQuery) {
 
   return {
     transactionsQuery,
-    createMutation,
     actionMutation,
     busyTransactionId: actionMutation.isPending
       ? actionMutation.variables?.transactionId

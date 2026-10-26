@@ -7,7 +7,7 @@ import { CurrencySelector } from '../features/currencies/CurrencySelector'
 const sections = [
   { path: '/', label: 'Обзор', title: 'Обзор финансов', hint: 'Главное о ваших доходах и расходах.', icon: 'M3 10 12 3l9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z' },
   { path: '/categories', label: 'Категории', title: 'Категории', hint: 'Нажмите на плашку, чтобы быстро добавить операцию.', icon: 'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z' },
-  { path: '/transactions', label: 'Операции', title: 'Операции', hint: 'История и исправления — в одном месте.', icon: 'M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4' },
+  { path: '/transactions', label: 'История', title: 'История', hint: '', icon: 'M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4' },
   { path: '/accounts', label: 'Счета', title: 'Счета', hint: 'Остатки на картах, наличные и накопления.', icon: 'M3 5h17v15H3zM3 5V3h14v2m-2 7h6v5h-6z' },
   { path: '/account', label: 'Аккаунт', title: 'Аккаунт', hint: 'Ваш профиль и доступ к приложению.', icon: 'M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM4 21v-2a8 8 0 0 1 16 0v2' },
 ]

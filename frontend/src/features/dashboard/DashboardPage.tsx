@@ -60,7 +60,7 @@ export function DashboardPage() {
         {!data.recent.length && <p>Добавьте первую операцию, чтобы увидеть статистику.</p>}
         <ul className="summary-list">{data.recent.map((item) => <li key={item.id}>
           <span>{item.categoryName} · {formatDate(item.occurredOn)}</span><strong>{item.type === 'Income' ? '+' : '−'}{money(item.amount)}</strong>
-        </li>)}</ul><Link to="/transactions">Открыть журнал операций</Link>
+        </li>)}</ul><Link to="/transactions">Вся история</Link>
       </section>
     </>}
   </section>
