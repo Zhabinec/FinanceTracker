@@ -207,17 +207,19 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
       </form>
       : setup ? <>
         <p>Это запасной ключ к вашим записям: для нового устройства или если забудете PIN. Сохраните его в менеджере паролей и никому не отправляйте.</p>
+        <h2>Быстрый вход</h2>
+        <label className="private-consent"><input type="checkbox" checked={enablePin} onChange={e => setEnablePin(e.target.checked)} />Настроить PIN на этом устройстве</label>
+        {enablePin && <PinFields pin={pin} repeat={repeatPin} onPin={setPin} onRepeat={setRepeatPin} />}
         <RecoveryCodeCard key={setup.id} code={setup.code} />
         <p className="muted">Без кода и доступа к вашим устройствам восстановить записи не получится.</p>
         <label className="private-consent"><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} />Я сохранил код восстановления</label>
-        <label className="private-consent"><input type="checkbox" checked={enablePin} onChange={e => setEnablePin(e.target.checked)} />Настроить PIN на этом устройстве</label>
-        {enablePin && <PinFields pin={pin} repeat={repeatPin} onPin={setPin} onRepeat={setRepeatPin} />}
         <p className="muted">Продолжая, вы переносите записи в защищённое хранилище. Сами записи сохранятся.</p>
         <details className="panel-disclosure"><summary>Что будет с прежними записями?</summary><p>Сначала проверим защищённую копию. Только после этого удалим прежнюю незашифрованную версию. Если проверка не пройдёт, записи останутся как были.</p></details>
         <button className="primary-button" disabled={busy || !saved} onClick={() => void create()}>{busy ? 'Подготавливаем…' : 'Начать пользоваться'}</button>
       </> : <>
         <p>Сохраните код восстановления один раз. Дальше на своём устройстве можно входить по короткому PIN.</p>
-        <button className="primary-button" disabled={busy} onClick={() => void prepare()}>{busy ? 'Подготавливаем…' : 'Настроить доступ'}</button>
+        <button className="primary-button" disabled={busy} onClick={() => { setEnablePin(true); void prepare() }}>{busy ? 'Подготавливаем…' : 'Настроить вход по PIN'}</button>
+        <button className="text-button" disabled={busy} onClick={() => { setEnablePin(false); void prepare() }}>Только код восстановления</button>
       </>}
     <details className="panel-disclosure" onToggle={e => setAccountOpen(e.currentTarget.open)}><summary>Доступ к аккаунту</summary>
       {accountOpen && <><p>{auth.user?.email}</p><Link to="/forgot-password">Сменить пароль</Link><TelegramLinkPanel /></>}

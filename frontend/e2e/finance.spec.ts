@@ -15,9 +15,9 @@ async function unlockFinance(page: Page) {
   if (await page.locator('.app-shell').isVisible()) return
   const gate = page.locator('.private-gate')
   const owner = (await gate.getAttribute('data-vault-user'))!
-  await expect(gate.getByRole('button', { name: /^(Настроить доступ|Разблокировать|Завершить настройку)$/ })).toBeVisible()
-  if (await gate.getByRole('button', { name: 'Настроить доступ', exact: true }).isVisible()) {
-    await gate.getByRole('button', { name: 'Настроить доступ', exact: true }).click()
+  await expect(gate.getByRole('button', { name: /^(Только код восстановления|Разблокировать|Завершить настройку)$/ })).toBeVisible()
+  if (await gate.getByRole('button', { name: 'Только код восстановления', exact: true }).isVisible()) {
+    await gate.getByRole('button', { name: 'Только код восстановления', exact: true }).click()
     await gate.getByRole('button', { name: 'Показать код', exact: true }).click()
     await expect(gate.getByLabel('Новый код восстановления')).toBeVisible()
     recoveryCodes.set(owner, await gate.getByLabel('Новый код восстановления').inputValue())
@@ -154,7 +154,8 @@ test('device PIN survives reload, limits wrong attempts, recovers with the key, 
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Войти', exact: true }).click()
-  await page.getByRole('button', { name: 'Настроить доступ', exact: true }).click()
+  await page.getByRole('button', { name: 'Настроить вход по PIN', exact: true }).click()
+  await expect(page.getByRole('checkbox', { name: 'Настроить PIN на этом устройстве', exact: true })).toBeChecked()
   const gate = page.locator('.private-gate'), owner = (await gate.getAttribute('data-vault-user'))!
   await gate.getByRole('button', { name: 'Показать код', exact: true }).click()
   const recovery = await gate.getByLabel('Новый код восстановления').inputValue()

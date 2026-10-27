@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 // Only synthetic accounts and intercepted API calls. This UI test runs without
 // email delivery or a database and never touches a real user's recovery key.
-async function setup(page: Page, telegram: boolean) {
+async function setup(page: Page, telegram: boolean, pin = false) {
   const user = { id: '11111111-1111-4111-8111-111111111111', email: 'recovery-ui@example.test', baseCurrency: 'RUB', registeredAtUtc: '2026-10-27T00:00:00Z' }
   const session = { accessToken: 'synthetic-test-access', refreshToken: 'synthetic-test-refresh', expiresAtUtc: '2099-01-01T00:00:00Z' }
   const document = { format: 1, baseCurrency: 'RUB', accounts: [{ id: '22222222-2222-4222-8222-222222222222', name: 'Основной счёт', currency: 'RUB', openingBalance: '0.00', isArchived: false, version: '33333333-3333-4333-8333-333333333333' }], categories: [], transactions: [], transfers: [], budgets: [], requests: [], imports: [] }
@@ -22,10 +22,23 @@ async function setup(page: Page, telegram: boolean) {
     window.Telegram = { WebApp: { initData: 'synthetic-test-launch', ready() {}, expand() {} } }
   })
   await page.goto('/')
-  await page.getByRole('button', { name: 'Настроить доступ', exact: true }).click()
+  await page.getByRole('button', { name: pin ? 'Настроить вход по PIN' : 'Только код восстановления', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Сохраните код восстановления', exact: true })).toBeVisible()
   return bodies
 }
+
+test('quick PIN setup is explicit and cannot finish with an empty PIN or without saving the backup', async ({ page }) => {
+  const bodies = await setup(page, false, true)
+  const before = bodies.filter(Boolean)
+  await expect(page.getByRole('checkbox', { name: 'Настроить PIN на этом устройстве', exact: true })).toBeChecked()
+  await expect(page.getByLabel('Новый PIN', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Начать пользоваться', exact: true })).toBeDisabled()
+  await page.getByRole('checkbox', { name: 'Я сохранил код восстановления', exact: true }).check()
+  await page.getByRole('button', { name: 'Начать пользоваться', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('одинаковый PIN из 6 цифр')
+  await expect(page.getByRole('heading', { name: 'Сохраните код восстановления', exact: true })).toBeVisible()
+  expect(bodies.filter(Boolean)).toEqual(before)
+})
 
 test('recovery code is hidden by default, copies exactly, and downloads as a readable local file', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
