@@ -21,6 +21,26 @@ button, a { -webkit-tap-highlight-color: transparent; }
   gap: 0.5rem;
 }
 
+.expense-chart-layout { display: grid; gap: 16px; align-items: center; }
+.expense-donut { position: relative; width: min(100%, 290px); margin: 0 auto; }
+.expense-donut svg { display: block; width: 100%; overflow: visible; }
+.expense-donut circle[stroke-dasharray] { cursor: pointer; transition: opacity 120ms, stroke-width 120ms; }
+.expense-donut-center { position: absolute; inset: 25%; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; text-align: center; pointer-events: none; min-width: 0; }
+.expense-donut-center span { font-size: 0.78rem; color: #59655d; overflow-wrap: anywhere; }
+.expense-donut-center strong { font-size: clamp(1rem, 2vw, 1.25rem); overflow-wrap: anywhere; max-width: 100%; }
+.expense-chart-legend { list-style: none; padding: 0; margin: 0; min-width: 0; }
+.expense-chart-category { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 52px; border: 1px solid transparent; border-radius: 12px; padding: 8px; background: transparent; text-align: left; color: inherit; cursor: pointer; }
+.expense-chart-category:hover, .expense-chart-category[aria-pressed="true"] { background: #f2f4ed; border-color: #d7dfd3; }
+.expense-chart-category:focus-visible { outline: 2px solid #287660; outline-offset: 2px; }
+.expense-chart-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--slice-color); }
+.expense-chart-name { min-width: 0; overflow-wrap: anywhere; }
+.expense-chart-name small, .expense-chart-amount small { display: block; margin-top: 3px; font-size: 0.78rem; color: #59655d; }
+.expense-chart-amount { text-align: right; overflow-wrap: anywhere; max-width: 180px; }
+.expense-chart-amount strong { font-size: 0.88rem; }
+@media (min-width: 1100px) { .expense-chart-layout { grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr); } }
+@media (max-width: 420px) { .expense-chart-amount { max-width: 130px; } }
+@media (prefers-reduced-motion: reduce) { .expense-donut circle[stroke-dasharray] { transition: none; } }
+
 .recovery-code-card textarea {
   width: 100%;
   overflow-wrap: anywhere;

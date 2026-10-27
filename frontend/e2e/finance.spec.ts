@@ -392,6 +392,8 @@ test('recover password using a delivered one-time email link', async ({ page, re
   await confirmTestAccount(request, email)
   await page.goto('/login')
   await page.getByRole('link', { name: 'Забыли пароль?' }).click()
+  // Both routes contain Email. Wait for the new form before filling it.
+  await expect(page.getByRole('heading', { name: 'Восстановление доступа', exact: true })).toBeVisible()
   await page.getByLabel('Email', { exact: true }).fill(email)
   const recoveryResponse = page.waitForResponse(response =>
     new URL(response.url()).pathname === '/api/auth/forgot-password' && response.request().method() === 'POST')
