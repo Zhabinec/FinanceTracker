@@ -8,6 +8,7 @@ import { useAuth } from './useAuth'
 import { getApiError } from '../../api/apiError'
 import { loginSchema, type LoginForm } from './validation'
 import { isTelegram, telegramLaunchError } from '../../platform/telegram'
+import { GoogleSignIn } from './GoogleSignIn'
 
 export function LoginPage() {
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<LoginForm>({
@@ -17,6 +18,7 @@ export function LoginPage() {
   const navigate = useNavigate()
   const [serverError, setServerError] = useState('')
   const registered = Boolean((useLocation().state as { registered?: boolean } | null)?.registered)
+  const googleResult = new URLSearchParams(useLocation().search).get('google')
 
   const submit = handleSubmit(async (values) => {
     setServerError('')
@@ -38,6 +40,10 @@ export function LoginPage() {
     <AuthLayout title={isTelegram() ? 'Подключить Telegram' : 'С возвращением'} subtitle={isTelegram() ? 'Войдите один раз, чтобы открыть свою историю.' : 'Введите данные, чтобы продолжить.'}
       alternateText="Ещё нет аккаунта?" alternateLink="/register" alternateLabel="Создать">
       {registered && <div className="notice success">Аккаунт создан. Подтвердите email по ссылке из письма.</div>}
+      {googleResult && <p className="notice error" role="alert">{googleResult === 'link_required'
+        ? 'Для подключения Google сначала войдите в существующий аккаунт, затем откройте «Аккаунт» → «Подключить Google».'
+        : 'Не удалось войти через Google. Попробуйте ещё раз.'}</p>}
+      <GoogleSignIn />
       {serverError && <div className="notice error">{serverError}</div>}
       {restoreError && <div className="notice error" role="alert">{restoreError}
         <button type="button" className="ghost-button" onClick={() => location.reload()}>Повторить вход</button></div>}
