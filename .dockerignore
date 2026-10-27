@@ -11,3 +11,12 @@
 **/appsettings.*.Local.json
 **/secrets.json
 artifacts
+**/*.dump
+**/*.pfx
+**/*.p12
+**/*.pem
+**/*.key
+**/finance-recovery-key*.json
+**/finance-recovery-code*.txt
+**/finance-private-*.json
+deploy/certs

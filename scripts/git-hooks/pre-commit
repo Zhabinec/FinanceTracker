@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+if command -v gitleaks >/dev/null 2>&1; then
+  scanner="$(command -v gitleaks)"
+elif [ -x ./artifacts/security/gitleaks/gitleaks.exe ]; then
+  scanner=./artifacts/security/gitleaks/gitleaks.exe
+else
+  printf '%s\n' 'Gitleaks is required for this repository hook. See docs/security.md.' >&2
+  exit 1
+fi
+
+# Examine staged changes, never print a discovered secret. A failure blocks the
+# local commit, including commits started from GitHub Desktop.
+exec "$scanner" git --pre-commit --staged --redact=100 --no-banner .

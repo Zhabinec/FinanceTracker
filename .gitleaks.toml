@@ -1,0 +1,31 @@
+title = "Finance Tracker secret checks"
+
+[extend]
+useDefault = true
+
+# Only this literal, disposable JWT fixture is allowed. Never skip a whole tests
+# directory: a real key accidentally pasted into a test must still fail the scan.
+[[allowlists]]
+description = "Fixed JWT key used exclusively by the disposable integration-test server"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''^backend/tests/Finance\.IntegrationTests/ApiFixture\.cs$''']
+regexes = ['''^integration-test-signing-key-with-at-least-32-bytes$''']
+
+[[rules]]
+id = "finance-recovery-key"
+description = "Finance Tracker private recovery code"
+regex = '''\bFT1\.[A-Za-z0-9_-]{43}\.[A-F0-9]{8}\b'''
+keywords = ["FT1."]
+
+[[rules]]
+id = "finance-resend-key"
+description = "Resend email API key"
+regex = '''\bre_[A-Za-z0-9_-]{20,}\b'''
+keywords = ["re_"]
+
+[[rules]]
+id = "finance-neon-password"
+description = "Neon generated database password"
+regex = '''\bnpg_[A-Za-z0-9]{16,}\b'''
+keywords = ["npg_"]

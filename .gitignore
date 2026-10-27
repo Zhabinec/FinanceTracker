@@ -33,6 +33,13 @@ appsettings.*.Local.json
 secrets.json
 *.dump
 deploy/certs/
+*.pfx
+*.p12
+*.pem
+*.key
+finance-recovery-key*.json
+finance-recovery-code*.txt
+finance-private-*.json
 
 # Logs
 logs/
