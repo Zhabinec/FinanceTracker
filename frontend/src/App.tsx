@@ -8,6 +8,7 @@ import { RegisterPage } from './features/auth/RegisterPage'
 import { useAuth } from './features/auth/useAuth'
 import './App.css'
 import { AppShell } from './shared/AppShell'
+import { PrivateFinanceGate } from './features/privateFinance/PrivateFinanceGate'
 
 const AccountPage = lazy(() => import('./features/auth/AccountPage').then(module => ({ default: module.AccountPage })))
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then(module => ({ default: module.AccountsPage })))
@@ -16,11 +17,11 @@ const CategoriesPage = lazy(() => import('./features/categories/CategoriesPage')
 const TransactionsPage = lazy(() => import('./features/transactions/TransactionsPage').then(module => ({ default: module.TransactionsPage })))
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { status } = useAuth()
+  const { status, user } = useAuth()
 
   if (status === 'loading') return <div className="app-loader">Восстанавливаем сессию…</div>
   if (status === 'anonymous') return <Navigate to="/login" replace />
-  return children
+  return <PrivateFinanceGate key={user?.id}>{children}</PrivateFinanceGate>
 }
 
 export default function App() {

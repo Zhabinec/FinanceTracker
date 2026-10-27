@@ -5,5 +5,12 @@
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
+.private-gate { max-width: 620px; margin: 5vh auto; padding: 16px; }
+.private-gate h1 { font-size: 1.7rem; }
+.private-gate textarea { width: 100%; min-height: 100px; padding: 12px; font: inherit; overflow-wrap: anywhere; }
+.private-gate .private-consent { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0; }
+.private-gate .private-consent input { flex: 0 0 22px; width: 22px; height: 22px; }
+.private-gate button { margin: 8px 8px 8px 0; }
+.private-pending { margin: 8px auto; max-width: 1100px; padding: 14px; }
 .telegram-app body { padding-top: max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px)); }
 .telegram-app .app-navigation { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-content-safe-area-inset-bottom, 0px)); }

@@ -60,10 +60,15 @@ if (refreshTokenLifetimeDays is <= 0 or > 90)
 
 var jwtSigningKey = new SymmetricSecurityKey(
     Encoding.UTF8.GetBytes(jwtOptions.SigningKey));
+var databaseOptions = new Npgsql.NpgsqlConnectionStringBuilder(databaseConnectionString);
+if (databaseOptions.Multiplexing || databaseOptions.Host?.Contains("-pooler.", StringComparison.OrdinalIgnoreCase) == true)
+    throw new InvalidOperationException("Use the direct Neon connection, not the transaction pooler, for private financial migration locks.");
 
 builder.Services.AddDbContext<FinanceDbContext>(options =>
     options.UseNpgsql(databaseConnectionString));
 builder.Services.AddScoped<IUserRegistrationStore, UserRegistrationStore>();
+builder.Services.AddScoped<Finance.Application.PrivateFinance.IPrivateFinanceStore, PrivateFinanceStore>();
+builder.Services.AddScoped<Finance.Application.PrivateFinance.PrivateFinanceHandler>();
 builder.Services.AddScoped<IUserLoginStore, UserLoginStore>();
 builder.Services.AddScoped<IUserProfileStore, UserProfileStore>();
 builder.Services.AddScoped<ICategoryStore, CategoryStore>();
@@ -237,6 +242,8 @@ if (migrateOnly || builder.Configuration.GetValue<bool>("Database:MigrateOnStart
 
 app.Use(async (context, next) =>
 {
+    if (context.Request.Path.StartsWithSegments("/api"))
+        context.Response.OnStarting(() => { context.Response.Headers.CacheControl = "no-store"; return Task.CompletedTask; });
     var started = System.Diagnostics.Stopwatch.GetTimestamp();
     try { await next(context); }
     finally
@@ -260,6 +267,7 @@ app.UseHostedFrontend();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<FinancialPrivacyMiddleware>();
 
 app.MapControllers();
 app.MapHealthChecks("/health");

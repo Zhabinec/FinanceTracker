@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 import { getApiError } from '../../api/apiError'
 import { getCategories } from '../categories/categoryApi'
 import { useAuth } from '../auth/useAuth'

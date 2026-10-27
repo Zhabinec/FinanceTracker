@@ -1,4 +1,4 @@
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 import type { CategoryType } from '../categories/categoryApi'
 
 export type FinanceTransaction = {

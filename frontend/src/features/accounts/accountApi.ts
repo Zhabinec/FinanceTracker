@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 
 export type MoneyAccount = {
   id: string; name: string; currency: string; openingBalance: string; balance: string; isArchived: boolean; version: string

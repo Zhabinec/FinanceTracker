@@ -1,4 +1,4 @@
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 
 export type CategoryType = 'Income' | 'Expense'
 
@@ -7,6 +7,7 @@ export type Category = {
   name: string
   type: CategoryType
   isActive: boolean
+  version: string
 }
 
 export async function getCategories() {
@@ -21,17 +22,17 @@ export async function createCategory(name: string, type: CategoryType) {
   return response.data
 }
 
-export async function renameCategory(categoryId: string, name: string) {
-  const response = await http.patch<Category>(`/categories/${categoryId}`, { name })
+export async function renameCategory(categoryId: string, name: string, version: string) {
+  const response = await http.patch<Category>(`/categories/${categoryId}`, { name, version })
   return response.data
 }
 
-export async function deactivateCategory(categoryId: string) {
-  const response = await http.post<Category>(`/categories/${categoryId}/deactivate`)
+export async function deactivateCategory(categoryId: string, version: string) {
+  const response = await http.post<Category>(`/categories/${categoryId}/deactivate`, { version })
   return response.data
 }
 
-export async function restoreCategory(categoryId: string) {
-  const response = await http.post<Category>(`/categories/${categoryId}/restore`)
+export async function restoreCategory(categoryId: string, version: string) {
+  const response = await http.post<Category>(`/categories/${categoryId}/restore`, { version })
   return response.data
 }

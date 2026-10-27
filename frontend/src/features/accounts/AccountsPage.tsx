@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 import { getApiError } from '../../api/apiError'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { useAuth } from '../auth/useAuth'

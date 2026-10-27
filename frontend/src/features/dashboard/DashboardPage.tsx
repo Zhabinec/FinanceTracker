@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 import { getApiError } from '../../api/apiError'
 import { useAuth } from '../auth/useAuth'
 import type { FinanceTransaction } from '../transactions/transactionApi'

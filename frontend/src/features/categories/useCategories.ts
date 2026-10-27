@@ -3,9 +3,9 @@ import * as categoryApi from './categoryApi'
 import type { CategoryForm } from './validation'
 
 export type CategoryAction =
-  | { kind: 'rename'; categoryId: string; name: string }
-  | { kind: 'deactivate'; categoryId: string }
-  | { kind: 'restore'; categoryId: string }
+  | { kind: 'rename'; categoryId: string; name: string; version: string }
+  | { kind: 'deactivate'; categoryId: string; version: string }
+  | { kind: 'restore'; categoryId: string; version: string }
 
 const categoriesQueryKey = ['categories'] as const
 
@@ -25,10 +25,10 @@ export function useCategories() {
   const actionMutation = useMutation({
     mutationFn: (action: CategoryAction) => {
       if (action.kind === 'rename')
-        return categoryApi.renameCategory(action.categoryId, action.name)
+        return categoryApi.renameCategory(action.categoryId, action.name, action.version)
       if (action.kind === 'deactivate')
-        return categoryApi.deactivateCategory(action.categoryId)
-      return categoryApi.restoreCategory(action.categoryId)
+        return categoryApi.deactivateCategory(action.categoryId, action.version)
+      return categoryApi.restoreCategory(action.categoryId, action.version)
     },
     onSuccess: () => Promise.all([
       queryClient.invalidateQueries({ queryKey: categoriesQueryKey }),

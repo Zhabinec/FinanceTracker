@@ -6,6 +6,7 @@ import { AuthContext, type AuthContextValue, type AuthStatus } from './authConte
 import { setSessionExpiredHandler } from '../../api/http'
 import { isTelegram, telegramLaunchError } from '../../platform/telegram'
 import { getApiError } from '../../api/apiError'
+import { lockVault } from '../privateFinance/session'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>('loading')
@@ -15,6 +16,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setSessionExpiredHandler(() => {
+      lockVault()
       queryClient.clear()
       setUser(null)
       setStatus('anonymous')
@@ -45,17 +47,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     restoreError,
     async signIn(email, password) {
+      lockVault()
       const currentUser = await authApi.login(email, password)
       setUser(currentUser)
       setRestoreError('')
       setStatus('authenticated')
     },
     async signOut() {
+      lockVault()
+      queryClient.clear()
+      setUser(null)
+      setRestoreError('')
+      setStatus('anonymous')
       try {
         await authApi.logout()
       } catch {
         // Local logout must still complete when the API cannot revoke the session.
       } finally {
+        lockVault()
         queryClient.clear()
         setUser(null)
         setRestoreError('')

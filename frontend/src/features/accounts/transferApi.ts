@@ -1,4 +1,4 @@
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 
 export type Transfer = {
   id: string; sourceAccountId: string; sourceAccountName: string; targetAccountId: string; targetAccountName: string

@@ -1,9 +1,9 @@
 # Подготовка бесплатного Render + Neon
 
 Статус: конфигурация подготовлена; это не подтверждение публичного размещения.
-По требованию приватности сначала нужно выбрать модель финансового хранилища
-из `decisions/private-financial-vault.md`. Текущая модель хранит финансовые поля
-открытыми для API и администратора БД. Локальные пользовательские данные в Neon
+Клиентское приватное хранилище реализовано в формате 1; его поток и ограничения
+описаны в `decisions/private-financial-vault.md`. Старые записи остаются открытыми
+до явного переноса через UI. Локальные пользовательские данные в Neon
 не переносить автоматически.
 
 ## Схема размещения
@@ -31,7 +31,10 @@ assets кешируются. Неизвестные API и отсутствую�
    либо Web Service с Dockerfile `deploy/render.Dockerfile`, root context `.`,
    Free, health `/health`, порт 8080. Бесплатную временную БД Render не создавать.
 3. В секретах Render задать `ConnectionStrings__Database` в формате Npgsql:
-   `Host=NEON_HOST;Port=5432;Database=NEON_DATABASE;Username=NEON_USER;Password=NEON_PASSWORD;SSL Mode=VerifyFull;Maximum Pool Size=10;Timeout=30`.
+   `Host=NEON_DIRECT_HOST;Port=5432;Database=NEON_DATABASE;Username=NEON_USER;Password=NEON_PASSWORD;SSL Mode=VerifyFull;Maximum Pool Size=10;Timeout=30;Multiplexing=false`.
+   Нужен direct endpoint, не hostname с `-pooler`: финансовый перенос и закрытие
+   legacy API используют PostgreSQL session advisory locks, несовместимые с
+   transaction pooling. Запуск с Neon pooler или Multiplexing отклоняется.
    Скопированная PostgreSQL URI не является Npgsql connection string.
    Реальные значения не вставлять в Git, логи или чат.
 4. Задать `Telegram__BotToken` из собственного бота; username — PetProjectFinanceBot.
@@ -45,7 +48,7 @@ assets кешируются. Неизвестные API и отсутствую�
    бесплатного сервиса. В EF используется блокировка миграции. Ошибка подключения
    или миграции останавливает старт, а не пересоздаёт БД. Перед обновлением
    существующей облачной БД нужны backup и проверка восстановления.
-7. После выбора приватности и почты развернуть сервис, проверить HTTPS, регистрацию,
+7. После настройки почты развернуть сервис, проверить HTTPS, регистрацию,
    восстановление, перезагрузку сессии и выбранную защиту финансовых данных.
    Только после этого настроить URL Main Mini App и Menu Button в BotFather.
 

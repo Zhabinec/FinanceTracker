@@ -370,6 +370,53 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("password_reset_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Finance.Domain.Users.PrivateFinancialVault", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Ciphertext")
+                        .IsRequired()
+                        .HasMaxLength(2666688)
+                        .HasColumnType("character varying(2666688)");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("LegacyFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("MutationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("Id")
+                        .IsUnique();
+
+                    b.ToTable("private_financial_vaults", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_private_vault_revision", "\"Revision\" > 0 AND \"Revision\" <= 9007199254740990");
+                        });
+                });
+
             modelBuilder.Entity("Finance.Domain.Users.RefreshSession", b =>
                 {
                     b.Property<Guid>("Id")
@@ -573,6 +620,15 @@ namespace Finance.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Finance.Domain.Users.PasswordResetToken", b =>
+                {
+                    b.HasOne("Finance.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Users.PrivateFinancialVault", b =>
                 {
                     b.HasOne("Finance.Domain.Users.User", null)
                         .WithMany()

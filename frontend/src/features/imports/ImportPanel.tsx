@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { http } from '../../api/http'
+import { financeHttp as http } from '../privateFinance/financeHttp'
 import { getApiError } from '../../api/apiError'
 import { useAccounts } from '../accounts/accountApi'
 import { csvHeaders } from './csvHeaders'

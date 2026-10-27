@@ -16,6 +16,7 @@ export function CategoryRow({
 }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(category.name)
+  const [editingVersion, setEditingVersion] = useState(category.version)
   const [nameError, setNameError] = useState('')
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -58,6 +59,7 @@ export function CategoryRow({
       kind: 'rename',
       categoryId: category.id,
       name: parsed.data,
+      version: editingVersion,
     })
 
     if (saved) setEditing(false)
@@ -100,15 +102,15 @@ export function CategoryRow({
               onClick={() => setMenuOpen(previous => !previous)}>⋯</button>
             {menuOpen && <div className="category-menu-panel" id={menuId} role="group" aria-label="Действия с категорией">
             <button type="button" disabled={busy}
-              onClick={() => { setName(category.name); setNameError(''); setMenuOpen(false); setEditing(true) }}>Переименовать</button>
+              onClick={() => { setName(category.name); setEditingVersion(category.version); setNameError(''); setMenuOpen(false); setEditing(true) }}>Переименовать</button>
             {category.isActive ? (
               <button type="button" className="danger-action" disabled={busy}
-                onClick={() => { setMenuOpen(false); void onAction({ kind: 'deactivate', categoryId: category.id }) }}>
+                onClick={() => { setMenuOpen(false); void onAction({ kind: 'deactivate', categoryId: category.id, version: category.version }) }}>
                 Отключить
               </button>
             ) : (
               <button type="button" disabled={busy}
-                onClick={() => { setMenuOpen(false); void onAction({ kind: 'restore', categoryId: category.id }) }}>
+                onClick={() => { setMenuOpen(false); void onAction({ kind: 'restore', categoryId: category.id, version: category.version }) }}>
                 Восстановить
               </button>
             )}
