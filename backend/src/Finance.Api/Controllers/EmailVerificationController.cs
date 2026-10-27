@@ -19,6 +19,8 @@ public sealed class EmailVerificationController(IEmailVerification handler,
     public IActionResult DeliveryMode() => Ok(new
     {
         simulated = options.Provider == "Mailpit",
+        restricted = options.Provider == "Resend" && System.Net.Mail.MailAddress.TryCreate(options.From, out var sender)
+            && sender.Host.Equals("resend.dev", StringComparison.OrdinalIgnoreCase),
         previewUrl = options.Provider == "Mailpit" ? configuration["Email:PreviewUrl"] ?? "http://localhost:8025" : null
     });
 

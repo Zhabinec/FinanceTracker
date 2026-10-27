@@ -7,6 +7,7 @@ import { getApiError } from '../../api/apiError'
 import { PasswordInput } from '../../shared/PasswordInput'
 import { LocalMailHint } from './LocalMailHint'
 import { registerSchema, type RegisterForm } from './validation'
+import { GoogleSignIn } from './GoogleSignIn'
 
 export function RegisterPage() {
   const { register, handleSubmit, setError, formState: { errors, isSubmitting } } = useForm<RegisterForm>({
@@ -35,6 +36,7 @@ export function RegisterPage() {
     <AuthLayout title="Создать аккаунт" subtitle="Начните вести финансы осознанно."
       alternateText="Уже есть аккаунт?" alternateLink="/login" alternateLabel="Войти">
       {serverError && <div className="notice error">{serverError}</div>}
+      <GoogleSignIn />
       <form onSubmit={submit} noValidate>
         <label>Email<input type="email" autoComplete="email" {...register('email')} /></label>
         {errors.email && <span className="field-error">{errors.email.message}</span>}

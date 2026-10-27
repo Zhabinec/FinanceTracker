@@ -93,6 +93,9 @@ builder.Services.AddSingleton(new TelegramSettings(builder.Configuration["Telegr
 builder.Services.AddSingleton<ITelegramInitDataVerifier, TelegramInitDataVerifier>();
 builder.Services.AddScoped<ITelegramAuthStore, TelegramAuthStore>();
 builder.Services.AddScoped<TelegramAuthHandler>();
+builder.Services.AddScoped<Finance.Application.Auth.Google.IGoogleAuthStore, GoogleAuthStore>();
+builder.Services.AddScoped<Finance.Application.Auth.Google.GoogleAuthHandler>();
+builder.Services.AddGoogleLogin(builder.Configuration);
 builder.Services.AddScoped<IPasswordRecoveryStore, PasswordRecoveryStore>();
 builder.Services.AddScoped<PasswordRecoveryHandler>();
 builder.Services.AddScoped<Finance.Application.Auth.Verification.IEmailVerification, Finance.Application.Auth.Verification.EmailVerificationHandler>();

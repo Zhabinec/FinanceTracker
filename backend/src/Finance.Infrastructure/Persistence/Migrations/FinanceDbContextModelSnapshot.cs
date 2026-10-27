@@ -335,6 +335,24 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("email_confirmation_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Finance.Domain.Users.GoogleAccountLink", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("Subject")
+                        .IsUnique();
+
+                    b.ToTable("google_account_links", (string)null);
+                });
+
             modelBuilder.Entity("Finance.Domain.Users.PasswordResetToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -616,6 +634,15 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Users.GoogleAccountLink", b =>
+                {
+                    b.HasOne("Finance.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
