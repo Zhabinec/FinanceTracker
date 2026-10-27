@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { exportEncryptedBackup, lockVault, readEncryptedBackup, restoreFinancialBackup } from './session'
 import type { FinancialDocument } from './model'
 import { getApiError } from '../../api/apiError'
+import { DevicePinControls } from './DevicePinControls'
 
 export function VaultControls() {
   const client = useQueryClient()
@@ -15,6 +16,7 @@ export function VaultControls() {
     {error && <p className="notice error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     <button className="ghost-button" onClick={exportEncryptedBackup}>Скачать зашифрованную копию</button>{' '}
     <button className="ghost-button" onClick={() => { client.clear(); lockVault() }}>Заблокировать финансы</button>
+    <DevicePinControls />
     <details className="panel-disclosure"><summary>Восстановить копию</summary>
       <label>Зашифрованный файл<input type="file" accept="application/json,.json" disabled={busy} onChange={async e => {
         const file = e.target.files?.[0]; setError(''); setNotice(''); setBackup(null); setConfirmed(false)

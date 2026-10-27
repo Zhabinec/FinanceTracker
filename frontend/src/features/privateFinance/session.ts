@@ -1,5 +1,6 @@
 import { http } from '../../api/http'
-import { decryptDocument, encryptDocument, downloadJson, backupEnvelope } from './crypto'
+import { decryptDocument, encryptDocument, downloadJson, backupEnvelope, keyFromCode } from './crypto'
+import { saveDevicePin } from './devicePin'
 import { parseDocument, type FinancialDocument, type VaultEnvelope, type VaultWrite } from './model'
 
 type OpenSession = { userId: string; key: CryptoKey; head: VaultEnvelope; document: FinancialDocument }
@@ -10,12 +11,12 @@ let generation = 0
 let queue: Promise<unknown> = Promise.resolve()
 let loading: Promise<void> | null = null
 const listeners = new Set<() => void>()
-let snapshot = { unlocked: false, userId: '', baseCurrency: 'RUB', revision: 0, pending: false }
+let snapshot = { unlocked: false, userId: '', vaultId: '', baseCurrency: 'RUB', revision: 0, pending: false }
 const storageKey = (userId: string) => `finance.private.pending.${userId}`
 export const subscribeVault = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } }
 export const vaultSnapshot = () => snapshot
 function emit() {
-  snapshot = { unlocked: Boolean(current), userId: current?.userId ?? '', baseCurrency: current?.document.baseCurrency ?? 'RUB', revision: current?.head.revision ?? 0, pending: Boolean(current && readPending(current.userId)) }
+  snapshot = { unlocked: Boolean(current), userId: current?.userId ?? '', vaultId: current?.head.id ?? '', baseCurrency: current?.document.baseCurrency ?? 'RUB', revision: current?.head.revision ?? 0, pending: Boolean(current && readPending(current.userId)) }
   listeners.forEach(listener => listener())
 }
 function readPending(userId: string): VaultWrite | null {
@@ -38,6 +39,15 @@ export function openVault(userId: string, key: CryptoKey, head: VaultEnvelope, d
 }
 function requireSession() { if (!current) throw new Error('Сначала разблокируйте финансовое хранилище.'); return current }
 function ensureCurrent(session: OpenSession, epoch: number) { if (current !== session || generation !== epoch) throw new Error('Хранилище заблокировано. Повторите вход.') }
+export async function configureDevicePin(code: string, pin: string) {
+  const session = requireSession(), epoch = generation
+  // The unlocked screen alone is insufficient to replace a PIN: require the recovery key.
+  const key = await keyFromCode(code)
+  await decryptDocument(session.head, key, session.userId)
+  ensureCurrent(session, epoch)
+  await saveDevicePin(session.userId, session.head.id, code, pin)
+  ensureCurrent(session, epoch)
+}
 export function financialDocument() { return requireSession().document }
 export async function readEncryptedBackup(value: unknown) {
   const session = requireSession()

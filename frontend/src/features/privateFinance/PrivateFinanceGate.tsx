@@ -10,6 +10,8 @@ import { TelegramLinkPanel } from '../auth/TelegramLinkPanel'
 import { decryptDocument, encryptDocument, newRecoveryCode, keyFromCode, downloadJson, backupEnvelope } from './crypto'
 import { parseDocument, type FinancialDocument, type VaultEnvelope } from './model'
 import { exportEncryptedBackup, lockVault, openVault, retryPendingSave, subscribeVault, vaultSnapshot, loadServerVersion, keepEncryptedPending } from './session'
+import { hasDevicePin, saveDevicePin, unlockWithDevicePin } from './devicePin'
+import { PinFields } from './PinFields'
 
 type Setup = { key: CryptoKey; code: string; document: FinancialDocument; fingerprint: string; id: string }
 export function PrivateFinanceGate({ children }: { children: ReactNode }) {
@@ -21,6 +23,8 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [backup, setBackup] = useState<unknown>(null), [restoreConfirmed, setRestoreConfirmed] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [pinMode, setPinMode] = useState(false), [pinAvailable, setPinAvailable] = useState(false)
+  const [pin, setPin] = useState(''), [repeatPin, setRepeatPin] = useState(''), [enablePin, setEnablePin] = useState(false)
   const lifecycle = useRef(0)
   const ensureActive = (epoch: number) => { if (lifecycle.current !== epoch) throw new Error('Аккаунт изменился. Повторите вход.') }
   useEffect(() => {
@@ -34,6 +38,13 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
       client.removeQueries({ predicate: query => ['accounts', 'transfers', 'categories', 'transactions', 'dashboard', 'budgets'].includes(String(query.queryKey[0])) })
     }
   }, [userId, client])
+  useEffect(() => {
+    let active = true
+    if (head?.isActive && !session.unlocked) void hasDevicePin(userId, head.id).then(available => {
+      if (active) { setPinAvailable(available); setPinMode(available) }
+    }).catch(() => { if (active) { setPinAvailable(false); setPinMode(false) } })
+    return () => { active = false }
+  }, [head?.id, head?.isActive, session.unlocked, userId])
   useEffect(() => {
     if (session.unlocked) void client.invalidateQueries({ predicate: query => ['accounts', 'transfers', 'categories', 'transactions', 'dashboard', 'budgets'].includes(String(query.queryKey[0])) })
   }, [session.revision, session.unlocked, client])
@@ -69,17 +80,25 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     ensureActive(epoch)
     client.clear(); openVault(userId, key, envelope, document); setHead(envelope); setCode(''); setSetup(null); setError('')
     setBackup(null); setRestoreConfirmed(false); setAccountOpen(false); setSaved(false)
+    setPin(''); setRepeatPin(''); setEnablePin(false)
+  }
+  const savePin = async (recoveryCode: string, vaultId: string) => {
+    if (!enablePin) return
+    if (!/^\d{6}$/.test(pin) || pin !== repeatPin) throw new Error('Введите одинаковый PIN из 6 цифр в обоих полях.')
+    await saveDevicePin(userId, vaultId, recoveryCode, pin)
   }
   const create = async () => {
     if (!setup || !saved || busy) return
     const epoch = lifecycle.current
     setBusy(true); setError('')
     try {
+      if (enablePin && (!/^\d{6}$/.test(pin) || pin !== repeatPin)) throw new Error('Введите одинаковый PIN из 6 цифр в обоих полях.')
       const encrypted = await encryptDocument(setup.document, setup.key, userId, setup.id, 1)
       ensureActive(epoch)
       const { data } = await http.post<VaultEnvelope>('/private-finance/stage', { id: setup.id, mutationId: crypto.randomUUID(), format: 1, legacyFingerprint: setup.fingerprint, ...encrypted })
       ensureActive(epoch)
       const result = await activate(data, setup.key, setup.document, epoch)
+      await savePin(setup.code, result.head.id)
       finish(setup.key, result.head, result.document, epoch)
     } catch (e) {
       if (lifecycle.current !== epoch) return
@@ -93,12 +112,28 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     const epoch = lifecycle.current
     setBusy(true); setError('')
     try {
-      const key = await keyFromCode(code)
+      const recoveryCode = pinMode ? await unlockWithDevicePin(userId, head.id, pin) : code
+      const key = await keyFromCode(recoveryCode)
       ensureActive(epoch)
-      if (head.isActive) finish(key, head, await decryptDocument(head, key, userId), epoch)
+      if (head.isActive) {
+        // Re-fetch after a manual lock: another device may have saved a newer revision.
+        const remote = (await http.get<{ vault: VaultEnvelope | null }>('/private-finance')).data.vault
+        if (!remote?.isActive || remote.id !== head.id || remote.revision < head.revision) throw new Error('Версия хранилища изменилась. Обновите страницу.')
+        const document = await decryptDocument(remote, key, userId)
+        ensureActive(epoch)
+        if (!pinMode) await savePin(recoveryCode, remote.id)
+        finish(key, remote, document, epoch)
+      }
       else { const result = await activate(head, key, undefined, epoch); finish(key, result.head, result.document, epoch) }
-    } catch (e) { setError(message(e)) }
-    finally { setBusy(false) }
+    } catch (e) {
+      if (lifecycle.current !== epoch) return
+      setError(message(e)); setPin(''); setRepeatPin('')
+      if (pinMode) {
+        const available = await hasDevicePin(userId, head.id).catch(() => false)
+        if (lifecycle.current === epoch) { setPinAvailable(available); if (!available) setPinMode(false) }
+      }
+    }
+    finally { if (lifecycle.current === epoch) setBusy(false) }
   }
   const cancel = async () => {
     if (!head || head.isActive || !window.confirm('Отменить незавершённый перенос? Исходная история останется на сервере.')) return
@@ -143,11 +178,20 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     {error && <p className="notice error" role="alert">{error}</p>}
     {head === undefined ? <><p role="status">Загружаем…</p>{error && <button className="ghost-button" onClick={() => location.reload()}>Повторить</button>}</>
       : head ? <form onSubmit={e => { e.preventDefault(); void unlock() }}>
-        <p>Введите сохранённый код. Он нужен только на вашем устройстве.</p>
-        <PasswordInput label="Код восстановления" autoComplete="off" value={code} onChange={e => setCode(e.target.value)} maxLength={100} />
+        {pinMode ? <>
+          <PasswordInput label="PIN" inputMode="numeric" pattern="[0-9]{6}" autoComplete="off" maxLength={6} value={pin} onChange={e => setPin(e.target.value)} />
+          <button className="text-button" type="button" disabled={busy} onClick={() => { setPinMode(false); setPin(''); setError('') }}>Забыл PIN — ввести код восстановления</button>
+        </> : <>
+          <PasswordInput label="Код восстановления" autoComplete="off" value={code} onChange={e => setCode(e.target.value)} maxLength={100} />
+          {head.isActive && <>
+            {pinAvailable && <button className="text-button" type="button" disabled={busy} onClick={() => { setPinMode(true); setCode(''); setError('') }}>Войти по PIN</button>}
+            <label className="private-consent"><input type="checkbox" checked={enablePin} onChange={e => setEnablePin(e.target.checked)} />Настроить PIN на этом устройстве</label>
+            {enablePin && <PinFields pin={pin} repeat={repeatPin} onPin={setPin} onRepeat={setRepeatPin} />}
+          </>}
+        </>}
         {!head.isActive && <p>Зашифрованная копия сохранена. После её проверки открытая история будет удалена из рабочей БД.</p>}
-        <button className="primary-button" disabled={busy || !code}>{busy ? 'Проверяем…' : head.isActive ? 'Разблокировать' : 'Проверить и завершить перенос'}</button>
-        {head.isActive && <details className="panel-disclosure"><summary>Не удаётся открыть? Восстановить файл</summary>
+        <button className="primary-button" disabled={busy || (pinMode ? pin.length !== 6 : !code)}>{busy ? 'Проверяем…' : head.isActive ? 'Разблокировать' : 'Проверить и завершить перенос'}</button>
+        {head.isActive && !pinMode && <details className="panel-disclosure"><summary>Не удаётся открыть? Восстановить файл</summary>
           <label>Зашифрованный файл для восстановления<input type="file" accept="application/json,.json" disabled={busy} onChange={async e => {
             const file = e.target.files?.[0]; setBackup(null); setRestoreConfirmed(false); setError('')
             if (!file) return
@@ -165,6 +209,8 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
         <label>Новый код восстановления<textarea readOnly value={setup.code} autoComplete="off" aria-label="Новый код восстановления" /></label>
         <button className="ghost-button" onClick={() => downloadJson('finance-recovery-key.json', { format: 'FinanceTrackerRecoveryKey', version: 1, userId, vaultId: setup.id, recoveryCode: setup.code })}>Скачать код</button>
         <label className="private-consent"><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} />Я сохранил код. Разрешаю перенести историю и удалить открытые записи из рабочей БД.</label>
+        <label className="private-consent"><input type="checkbox" checked={enablePin} onChange={e => setEnablePin(e.target.checked)} />Настроить PIN на этом устройстве</label>
+        {enablePin && <PinFields pin={pin} repeat={repeatPin} onPin={setPin} onRepeat={setRepeatPin} />}
         <button className="primary-button" disabled={busy || !saved} onClick={() => void create()}>{busy ? 'Шифруем и проверяем…' : 'Зашифровать и перенести'}</button>
       </> : <>
         <p>Доходы, расходы и счета будут шифроваться на устройстве. Сервер получит только зашифрованную копию.</p>
