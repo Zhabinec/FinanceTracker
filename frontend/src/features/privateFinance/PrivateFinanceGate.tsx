@@ -7,11 +7,12 @@ import { PasswordInput } from '../../shared/PasswordInput'
 import { useAuth } from '../auth/useAuth'
 import { AuthContext } from '../auth/authContext'
 import { TelegramLinkPanel } from '../auth/TelegramLinkPanel'
-import { decryptDocument, encryptDocument, newRecoveryCode, keyFromCode, downloadJson, backupEnvelope } from './crypto'
+import { decryptDocument, encryptDocument, newRecoveryCode, keyFromCode, backupEnvelope } from './crypto'
 import { parseDocument, type FinancialDocument, type VaultEnvelope } from './model'
 import { exportEncryptedBackup, lockVault, openVault, retryPendingSave, subscribeVault, vaultSnapshot, loadServerVersion, keepEncryptedPending } from './session'
 import { hasDevicePin, saveDevicePin, unlockWithDevicePin } from './devicePin'
 import { PinFields } from './PinFields'
+import { RecoveryCodeCard } from './RecoveryCodeCard'
 
 type Setup = { key: CryptoKey; code: string; document: FinancialDocument; fingerprint: string; id: string }
 export function PrivateFinanceGate({ children }: { children: ReactNode }) {
@@ -165,7 +166,7 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
   if (session.unlocked && session.userId === userId) return <AuthContext.Provider value={{ ...auth, user: { ...auth.user!, baseCurrency: session.baseCurrency } }}>
     {session.pending && <div className="notice error private-pending" role="alert">Сохранение не подтверждено. Повторите его или скачайте копию перед закрытием вкладки.
       <button className="ghost-button" disabled={busy} onClick={async () => { setBusy(true); try { await retryPendingSave(); await client.invalidateQueries() } catch (e) { setError(message(e)) } finally { setBusy(false) } }}>Повторить сохранение</button>
-      <button className="ghost-button" onClick={exportEncryptedBackup}>Скачать копию</button>
+      <button className="ghost-button" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { await exportEncryptedBackup() } catch (e) { setError(message(e)) } finally { setBusy(false) } }}>Скачать копию</button>
       <button className="ghost-button" disabled={busy} onClick={async () => {
         if (!window.confirm('Вернуться к версии на сервере? Несохранённые изменения будут отброшены. Уже сохранённые записи останутся.')) return
         setBusy(true)
@@ -174,7 +175,7 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     {children}
   </AuthContext.Provider>
   return <main className="private-gate" data-vault-user={userId}><section className="transactions-list-card">
-    <h1>{head?.isActive ? 'Разблокировать финансы' : head ? 'Завершить перенос' : 'Приватное хранилище'}</h1>
+    <h1>{head?.isActive ? 'Разблокировать финансы' : head ? 'Завершить защиту записей' : setup ? 'Сохраните код восстановления' : 'Защитим ваши финансы'}</h1>
     {error && <p className="notice error" role="alert">{error}</p>}
     {head === undefined ? <><p role="status">Загружаем…</p>{error && <button className="ghost-button" onClick={() => location.reload()}>Повторить</button>}</>
       : head ? <form onSubmit={e => { e.preventDefault(); void unlock() }}>
@@ -189,8 +190,8 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
             {enablePin && <PinFields pin={pin} repeat={repeatPin} onPin={setPin} onRepeat={setRepeatPin} />}
           </>}
         </>}
-        {!head.isActive && <p>Зашифрованная копия сохранена. После её проверки открытая история будет удалена из рабочей БД.</p>}
-        <button className="primary-button" disabled={busy || (pinMode ? pin.length !== 6 : !code)}>{busy ? 'Проверяем…' : head.isActive ? 'Разблокировать' : 'Проверить и завершить перенос'}</button>
+        {!head.isActive && <p>Ваши записи сохранены. Введите код, чтобы проверить доступ и закончить настройку.</p>}
+        <button className="primary-button" disabled={busy || (pinMode ? pin.length !== 6 : !code)}>{busy ? 'Проверяем…' : head.isActive ? 'Разблокировать' : 'Завершить настройку'}</button>
         {head.isActive && !pinMode && <details className="panel-disclosure"><summary>Не удаётся открыть? Восстановить файл</summary>
           <label>Зашифрованный файл для восстановления<input type="file" accept="application/json,.json" disabled={busy} onChange={async e => {
             const file = e.target.files?.[0]; setBackup(null); setRestoreConfirmed(false); setError('')
@@ -205,17 +206,18 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
         {!head.isActive && <button className="ghost-button" type="button" disabled={busy} onClick={() => void cancel()}>Отменить перенос</button>}
       </form>
       : setup ? <>
-        <p>Сохраните код отдельно и никому не передавайте. Без него мы не сможем восстановить финансы после потери устройств.</p>
-        <label>Новый код восстановления<textarea readOnly value={setup.code} autoComplete="off" aria-label="Новый код восстановления" /></label>
-        <button className="ghost-button" onClick={() => downloadJson('finance-recovery-key.json', { format: 'FinanceTrackerRecoveryKey', version: 1, userId, vaultId: setup.id, recoveryCode: setup.code })}>Скачать код</button>
-        <label className="private-consent"><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} />Я сохранил код. Разрешаю перенести историю и удалить открытые записи из рабочей БД.</label>
+        <p>Это запасной ключ к вашим записям: для нового устройства или если забудете PIN. Сохраните его в менеджере паролей и никому не отправляйте.</p>
+        <RecoveryCodeCard key={setup.id} code={setup.code} />
+        <p className="muted">Без кода и доступа к вашим устройствам восстановить записи не получится.</p>
+        <label className="private-consent"><input type="checkbox" checked={saved} onChange={e => setSaved(e.target.checked)} />Я сохранил код восстановления</label>
         <label className="private-consent"><input type="checkbox" checked={enablePin} onChange={e => setEnablePin(e.target.checked)} />Настроить PIN на этом устройстве</label>
         {enablePin && <PinFields pin={pin} repeat={repeatPin} onPin={setPin} onRepeat={setRepeatPin} />}
-        <button className="primary-button" disabled={busy || !saved} onClick={() => void create()}>{busy ? 'Шифруем и проверяем…' : 'Зашифровать и перенести'}</button>
+        <p className="muted">Продолжая, вы переносите записи в защищённое хранилище. Сами записи сохранятся.</p>
+        <details className="panel-disclosure"><summary>Что будет с прежними записями?</summary><p>Сначала проверим защищённую копию. Только после этого удалим прежнюю незашифрованную версию. Если проверка не пройдёт, записи останутся как были.</p></details>
+        <button className="primary-button" disabled={busy || !saved} onClick={() => void create()}>{busy ? 'Подготавливаем…' : 'Начать пользоваться'}</button>
       </> : <>
-        <p>Доходы, расходы и счета будут шифроваться на устройстве. Сервер получит только зашифрованную копию.</p>
-        <p>Вход в аккаунт и разблокировка истории — разные действия. Код восстановления серверу не отправляется.</p>
-        <button className="primary-button" disabled={busy} onClick={() => void prepare()}>{busy ? 'Подготавливаем…' : 'Создать приватное хранилище'}</button>
+        <p>Сохраните код восстановления один раз. Дальше на своём устройстве можно входить по короткому PIN.</p>
+        <button className="primary-button" disabled={busy} onClick={() => void prepare()}>{busy ? 'Подготавливаем…' : 'Настроить доступ'}</button>
       </>}
     <details className="panel-disclosure" onToggle={e => setAccountOpen(e.currentTarget.open)}><summary>Доступ к аккаунту</summary>
       {accountOpen && <><p>{auth.user?.email}</p><Link to="/forgot-password">Сменить пароль</Link><TelegramLinkPanel /></>}

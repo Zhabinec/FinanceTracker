@@ -157,7 +157,7 @@ export async function mutateFinancial<T>(identity: string, change: (draft: Finan
 }
 export function exportEncryptedBackup() {
   const session = requireSession(), pending = readPending(session.userId)
-  downloadJson(`finance-private-${new Date().toISOString().slice(0, 10)}.json`, {
+  return downloadJson(`finance-private-${new Date().toISOString().slice(0, 10)}.json`, {
     format: 'FinanceTrackerEncryptedBackup', version: 1, userId: session.userId,
     vault: session.head, pending: pending ? { ...pending, revision: pending.expectedRevision + 1, isActive: true, updatedAtUtc: '' } : null,
   })

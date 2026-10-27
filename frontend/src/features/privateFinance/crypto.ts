@@ -1,4 +1,6 @@
 import { parseDocument, type FinancialDocument, type VaultEnvelope } from './model.ts'
+import { saveLocalFile } from '../../platform/localFiles.ts'
+import { isTelegram } from '../../platform/telegram.ts'
 
 export const MAX_DOCUMENT_BYTES = 2_000_000
 export function toBase64(bytes: Uint8Array) {
@@ -55,7 +57,5 @@ export function backupEnvelope(value: unknown, userId: string, id: string): Vaul
   return envelope
 }
 export function downloadJson(name: string, value: unknown) {
-  const url = URL.createObjectURL(new Blob([JSON.stringify(value)], { type: 'application/json' }))
-  const link = document.createElement('a'); link.href = url; link.download = name; link.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  return saveLocalFile(name, JSON.stringify(value), 'application/json', isTelegram())
 }

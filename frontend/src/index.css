@@ -14,3 +14,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .private-pending { margin: 8px auto; max-width: 1100px; padding: 14px; }
 .telegram-app body { padding-top: max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px)); }
 .telegram-app .app-navigation { padding-bottom: max(env(safe-area-inset-bottom, 0px), var(--tg-content-safe-area-inset-bottom, 0px)); }
+.recovery-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.recovery-code-card textarea {
+  width: 100%;
+  overflow-wrap: anywhere;
+  font-family: monospace;
+}
