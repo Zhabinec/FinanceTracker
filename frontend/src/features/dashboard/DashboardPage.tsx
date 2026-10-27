@@ -9,6 +9,7 @@ import { todayInMoscow } from '../transactions/validation'
 import { formatDate } from '../../shared/formatting'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { BudgetsPanel } from '../budgets/BudgetsPanel'
+import { ExpenseDonut } from './ExpenseDonut'
 
 type Dashboard = {
   from: string; to: string; income: string; expense: string; result: string
@@ -49,12 +50,13 @@ export function DashboardPage() {
     <BudgetsPanel />
     {data && <>
       <section className="summary-grid category-summary">
-        {(['Income', 'Expense'] as const).map((type) => <article className="transactions-list-card" key={type}>
-          <h2>{type === 'Income' ? 'Доходы по категориям' : 'Расходы по категориям'}</h2>
-          {!data.categories.some((item) => item.type === type) && <p>Операций за период нет.</p>}
-          <ul className="summary-list">{data.categories.filter((item) => item.type === type).map((item) =>
+        <ExpenseDonut key={`${period.from}:${period.to}`} categories={data.categories} money={money} />
+        <article className="transactions-list-card">
+          <h2>Доходы по категориям</h2>
+          {!data.categories.some((item) => item.type === 'Income') && <p>Операций за период нет.</p>}
+          <ul className="summary-list">{data.categories.filter((item) => item.type === 'Income').map((item) =>
             <li key={item.categoryId}><span>{item.categoryName}</span><strong>{money(item.amount)}</strong></li>)}</ul>
-        </article>)}
+        </article>
       </section>
       <section className="transactions-list-card"><h2>Последние операции за период</h2>
         {!data.recent.length && <p>Добавьте первую операцию, чтобы увидеть статистику.</p>}
