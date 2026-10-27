@@ -160,6 +160,9 @@ builder.Services.AddRateLimiter(options =>
     options.AddPolicy("password-login", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
         { PermitLimit = builder.Configuration.GetValue("Auth:LoginPermitLimit", 15), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("google-auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        $"google:{context.Connection.RemoteIpAddress}", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddSingleton<IPasswordHasher, AspNetCorePasswordHasher>();
 builder.Services.AddSingleton<IClock, SystemClock>();

@@ -14,7 +14,6 @@ namespace Finance.Api.Controllers;
 
 [ApiController]
 [Route("api/auth/google")]
-[EnableRateLimiting("password-login")]
 public sealed class GoogleAuthController(GoogleSettings settings, GoogleAuthHandler handler,
     IDataProtectionProvider protection, ICurrentUser currentUser, IClock clock, RefreshCookieService cookies) : ControllerBase
 {
@@ -27,6 +26,7 @@ public sealed class GoogleAuthController(GoogleSettings settings, GoogleAuthHand
 
     [Authorize]
     [HttpPost("link/start")]
+    [EnableRateLimiting("google-auth")]
     public IActionResult LinkStart()
     {
         if (!settings.Enabled) return NotFound();
@@ -37,6 +37,7 @@ public sealed class GoogleAuthController(GoogleSettings settings, GoogleAuthHand
     }
 
     [HttpGet("start")]
+    [EnableRateLimiting("google-auth")]
     public IActionResult Start([FromQuery] bool link = false)
     {
         if (!settings.Enabled) return NotFound();
@@ -59,6 +60,7 @@ public sealed class GoogleAuthController(GoogleSettings settings, GoogleAuthHand
     }
 
     [HttpGet("complete")]
+    [EnableRateLimiting("google-auth")]
     public async Task<IActionResult> Complete(CancellationToken ct)
     {
         if (!settings.Enabled) return NotFound();

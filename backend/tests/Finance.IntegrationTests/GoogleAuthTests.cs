@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using Finance.Application.Auth.Google;
 using Finance.Application.Common;
 using Finance.Infrastructure.Persistence;
@@ -12,6 +13,16 @@ using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 namespace Finance.IntegrationTests;
 public sealed partial class FinanceApiTests
 {
+    [Fact]
+    public async Task ReadingGoogleOptionsDoesNotConsumePasswordLoginAttempts()
+    {
+        using var app = fixture.App.WithWebHostBuilder(builder => builder.UseSetting("Auth:LoginPermitLimit", "1"));
+        using var client = app.CreateClient(new WebApplicationFactoryClientOptions { BaseAddress = new("https://localhost"), AllowAutoRedirect = false });
+        for (var i = 0; i < 5; i++) Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/auth/google/options")).StatusCode);
+        var credentials = new { email = $"unknown-{Guid.NewGuid():N}@example.com", password = "Test-password-123!" };
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.PostAsJsonAsync("/api/auth/login", credentials)).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsJsonAsync("/api/auth/login", credentials)).StatusCode);
+    }
     private async Task<(Guid User, GoogleSession Session)> GoogleLogin(GoogleProof proof, GoogleLinkOwner? link = null)
     {
         using var scope = fixture.App.Services.CreateScope();
