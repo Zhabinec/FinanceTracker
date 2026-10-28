@@ -9,7 +9,7 @@ export function ExpenseDonut({ categories, money }: { categories: CategoryTotal[
   if (!chart.slices.length) return null
   return <article className="transactions-list-card expense-chart" aria-label="Расходы по категориям">
     <h2>Расходы по категориям</h2>
-    <div className="expense-chart-layout">
+    <div className="expense-chart-layout data-reveal">
       <div className="expense-donut">
         <svg viewBox="0 0 112 112" role="img" aria-label={`Круговая диаграмма расходов: ${money(chart.total)}`}>
           <circle cx="56" cy="56" r="40" fill="none" stroke="#e8e9e2" strokeWidth="16" />

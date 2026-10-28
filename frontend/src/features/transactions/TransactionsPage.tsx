@@ -9,6 +9,7 @@ import { TransactionRow } from './TransactionRow'
 import type { TransactionInput, TransactionQuery } from './transactionApi'
 import { useTransactions } from './useTransactions'
 import { ImportPanel } from '../imports/ImportPanel'
+import { DataSkeleton } from '../../shared/DataSkeleton'
 
 export function TransactionsPage() {
   const { user } = useAuth()
@@ -39,7 +40,7 @@ export function TransactionsPage() {
     <section className="dashboard-shell transactions-page">
       <section className="transactions-list-card">
         <div className="transactions-heading"><h2>Доходы и расходы</h2>
-      <span className="count-badge">{transactionsQuery.data?.totalCount ?? 0}</span></div>
+      <span className="count-badge">{transactionsQuery.data?.totalCount ?? '—'}</span></div>
         <details className="filter-disclosure"><summary>Фильтры и сортировка</summary>
         <div className="transaction-filters">
           <label>Счёт<select value={query.accountId ?? ''} onChange={event => changeFilter({ accountId: event.target.value || undefined })}>
@@ -64,14 +65,14 @@ export function TransactionsPage() {
           <button className="ghost-button" onClick={() => setQuery({ page: 1, pageSize: 20, sort: 'dateDesc' })}>Сбросить</button>
         </div>
         </details>
-        {transactionsQuery.isPending && <div className="category-loading">Загружаем операции…</div>}
+        {transactionsQuery.isPending && <DataSkeleton label="Загружаем операции…" />}
         {transactionsQuery.isError && <div className="notice error">
           {getApiError(transactionsQuery.error, 'Не удалось загрузить операции.')}
         </div>}
         {transactionsQuery.isSuccess && transactionsQuery.data.items.length === 0 &&
           <p className="category-empty">Операций по выбранным условиям нет.</p>}
         {transactionsQuery.isSuccess && transactionsQuery.data.items.length > 0 && (
-          <ul className="transaction-list">
+          <ul className="transaction-list data-reveal">
             {transactionsQuery.data.items.map((transaction) => (
               <TransactionRow
                 key={transaction.id}

@@ -12,6 +12,7 @@ import type { Category } from './categoryApi'
 import { QuickTransactionDialog } from './QuickTransactionDialog'
 import { deleteTransaction, type FinanceTransaction } from '../transactions/transactionApi'
 import { formatMoney } from '../../shared/formatting'
+import { DataSkeleton } from '../../shared/DataSkeleton'
 
 export function CategoriesPage() {
   const { user } = useAuth()
@@ -98,12 +99,12 @@ export function CategoriesPage() {
       </details>
 
       {actionError && <div className="notice error category-notice">{actionError}</div>}
-      {categoriesQuery.isPending && <div className="category-loading">Загружаем категории…</div>}
+      {categoriesQuery.isPending && <DataSkeleton kind="cards" label="Загружаем категории…" />}
       {categoriesQuery.isError && <div className="notice error category-notice">
         {getApiError(categoriesQuery.error, 'Не удалось загрузить категории.')}
       </div>}
       {categoriesQuery.isSuccess && (
-        <div className="category-grid">
+        <div className="category-grid data-reveal">
           <CategoryColumn title="Расходы" hint="Деньги уходят" type="Expense" categories={categories}
             busyId={busyCategoryId} onAction={runAction} onQuickAdd={setQuickCategory} />
           <CategoryColumn title="Доходы" hint="Деньги приходят" type="Income" categories={categories}

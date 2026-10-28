@@ -8,6 +8,7 @@ import { useAuth } from '../auth/useAuth'
 import { useAccounts, type MoneyAccount } from './accountApi'
 import { openingBalanceSchema } from './validation'
 import { TransfersPanel } from './TransfersPanel'
+import { DataSkeleton } from '../../shared/DataSkeleton'
 
 function AccountCard({ account, onChange, busy }: {
   account: MoneyAccount; busy: boolean
@@ -78,9 +79,9 @@ export function AccountsPage() {
     </section>
     </details>
     <label className="archive-toggle"><input type="checkbox" checked={showArchive} onChange={event => setShowArchive(event.target.checked)} /> Показать архивные счета</label>
-    {query.isPending && <p role="status">Загружаем счета…</p>}
+    {query.isPending && <DataSkeleton kind="cards" label="Загружаем счета…" />}
     {query.isError && <div className="notice error">{getApiError(query.error, 'Не удалось загрузить счета.')}</div>}
-    <section className="summary-grid">{query.data?.filter(a => showArchive || !a.isArchived).map(account =>
+    <section className={`summary-grid${query.data ? ' data-reveal' : ''}`}>{query.data?.filter(a => showArchive || !a.isArchived).map(account =>
       <AccountCard key={account.id} account={account} busy={change.isPending}
         onChange={async (a, nextName, isArchived) => { await change.mutateAsync({ account: a, name: nextName, isArchived }) }} />)}</section>
     {query.isSuccess && !query.data.some(a => showArchive || !a.isArchived) && <p>Нет активных счетов. Создайте новый или восстановите счёт из архива.</p>}

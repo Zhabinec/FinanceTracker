@@ -7,6 +7,7 @@ import { getCategories } from '../categories/categoryApi'
 import { useAuth } from '../auth/useAuth'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { todayInMoscow, transactionSchema } from '../transactions/validation'
+import { DataSkeleton } from '../../shared/DataSkeleton'
 
 type Budget = { id: string; categoryId: string; categoryName: string; categoryActive: boolean; month: string;
   limit: string; spent: string; remaining: string; overspent: string; version: string }
@@ -61,10 +62,10 @@ export function BudgetsPanel() {
     {notice && <div className="notice success" role="status">{notice}</div>}
     {error && <div className="notice error" role="alert">{error}</div>}
     {!month && <p>Выберите месяц бюджета.</p>}
-    {month && budgets.isPending && <p>Загружаем бюджеты…</p>}
+    {month && budgets.isPending && <DataSkeleton label="Загружаем бюджеты…" rows={2} />}
     {budgets.isError && <div className="notice error" role="alert">{getApiError(budgets.error, 'Не удалось загрузить бюджеты.')} <button className="text-button" onClick={() => void budgets.refetch()}>Повторить</button></div>}
     {budgets.isSuccess && budgets.data.length === 0 && <p>Задайте лимит для категории, чтобы следить за расходами.</p>}
-    <ul className="budget-list">{budgets.data?.map(budget => <li key={budget.id} className="budget-card">
+    <ul className={`budget-list${budgets.data ? ' data-reveal' : ''}`}>{budgets.data?.map(budget => <li key={budget.id} className="budget-card">
       <div className="budget-heading"><strong>{budget.categoryName}{!budget.categoryActive ? ' · Неактивна' : ''}</strong><span>Лимит {money(budget.limit)}</span></div>
       <progress aria-label={`Расходы: ${budget.categoryName}`} max={Number(budget.limit)} value={Math.min(Number(budget.spent), Number(budget.limit))} />
       <div className="budget-heading"><span>Потрачено {money(budget.spent)}</span>

@@ -16,6 +16,7 @@ import { RecoveryCodeCard } from './RecoveryCodeCard'
 import { useRuntimeOptions } from '../auth/runtimeOptions'
 import { isTelegram } from '../../platform/telegram'
 import { legacyLaunchUrl } from '../../platform/legacyLaunch'
+import { DataSkeleton } from '../../shared/DataSkeleton'
 
 type Setup = { key: CryptoKey; code: string; document: FinancialDocument; fingerprint: string; id: string }
 export function PrivateFinanceGate({ children }: { children: ReactNode }) {
@@ -217,6 +218,10 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
       }}>Вернуться к версии на сервере</button>{error && <p>{error}</p>}</div>}
     {children}
   </AuthContext.Provider>
+  if (head === undefined && !error) return <main className="private-loading" data-vault-user={userId}>
+    <DataSkeleton kind="overview" label="Открываем финансовые данные…" />
+    <button className="text-button" onClick={() => void auth.signOut()}>Выйти из аккаунта</button>
+  </main>
   return <main className="private-gate" data-vault-user={userId}><section className="transactions-list-card">
     <h1>{head?.isActive ? 'Разблокировать финансы' : head ? 'Завершить защиту записей' : setup ? 'Сохраните код восстановления' : managedAvailable ? 'Ваши финансы в Telegram' : 'Защитим ваши финансы'}</h1>
     {error && <p className="notice error" role="alert">{error}</p>}
