@@ -7,6 +7,7 @@ import { EmailVerificationPage } from './features/auth/EmailVerificationPage'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { useAuth } from './features/auth/useAuth'
 import './App.css'
+import './motion.css'
 import { AppShell } from './shared/AppShell'
 import { PrivateFinanceGate } from './features/privateFinance/PrivateFinanceGate'
 

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 import { newRecoveryCode, keyFromCode, encryptDocument } from '../src/features/privateFinance/crypto.ts'
 import { parseDocument } from '../src/features/privateFinance/model.ts'
 
-test('expense donut uses private period totals, supports touch and keyboard, currency display and an empty period', async ({ page }) => {
+test('private expenses: chart totals, centred history signs, responsive layout and accessible motion', async ({ page }) => {
   const owner = crypto.randomUUID(), vaultId = crypto.randomUUID(), account = crypto.randomUUID(), target = crypto.randomUUID()
   const food = crypto.randomUUID(), transport = crypto.randomUUID(), salary = crypto.randomUUID()
   const code = await newRecoveryCode(), key = await keyFromCode(code)
@@ -51,5 +51,36 @@ test('expense donut uses private period totals, supports touch and keyboard, cur
   await page.getByLabel('С даты', { exact: true }).fill('2026-11-01')
   await page.getByLabel('По дату', { exact: true }).fill('2026-11-30')
   await expect(chart).toHaveCount(0)
+  await page.getByRole('navigation', { name: 'Основная навигация' }).getByRole('link', { name: 'История', exact: true }).click()
+  await expect(page.locator('.transaction-sign')).toHaveCount(4)
+  for (const width of [1280, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 })
+    const badges = page.locator('.transaction-sign')
+    for (const badge of await badges.all()) {
+      const frame = await badge.boundingBox(), icon = await badge.locator('svg').boundingBox()
+      expect(frame).not.toBeNull(); expect(icon).not.toBeNull()
+      expect(Math.abs(frame!.x + frame!.width / 2 - icon!.x - icon!.width / 2)).toBeLessThan(1)
+      expect(Math.abs(frame!.y + frame!.height / 2 - icon!.y - icon!.height / 2)).toBeLessThan(1)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 390) await page.screenshot({ path: 'test-results/history-polish-mobile.png', fullPage: true })
+    if (width === 1280) await page.screenshot({ path: 'test-results/history-polish-desktop.png', fullPage: true })
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(page.locator('.transaction-row').first()).toHaveCSS('animation-name', 'none')
+  await page.getByRole('navigation', { name: 'Основная навигация' }).getByRole('link', { name: 'Категории', exact: true }).click()
+  const open = page.getByRole('button', { name: 'Добавить расход: Продукты', exact: true })
+  await open.click()
+  const dialog = page.getByRole('dialog', { name: 'Продукты', exact: true })
+  await expect(dialog.getByLabel('Название', { exact: true })).toBeFocused()
+  await expect(dialog).toHaveCSS('animation-name', 'none')
+  await page.keyboard.press('Escape')
+  await expect(open).toBeFocused()
+  await page.emulateMedia({ reducedMotion: 'no-preference' })
+  await open.click()
+  await expect(dialog).toHaveCSS('animation-name', 'dialog-enter')
+  await expect(dialog.getByLabel('Название', { exact: true })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(open).toBeFocused()
   expect(paths.some(path => path === '/api/dashboard' || path === '/api/transactions')).toBe(false)
 })
