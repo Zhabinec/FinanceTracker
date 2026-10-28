@@ -2,6 +2,7 @@ using Finance.Application.Abstractions;
 using Finance.Application.Auth.Refresh;
 using Finance.Domain.Users;
 using Finance.Application.Common;
+using Finance.Application.Users.GetCurrent;
 
 namespace Finance.Application.Auth.Telegram;
 
@@ -16,7 +17,7 @@ public sealed class TelegramSettings(string botToken, string botUsername, int in
 public sealed record TelegramProof(long UserId);
 public interface ITelegramInitDataVerifier { TelegramProof? Verify(string? initData); }
 public sealed record TelegramSessionOwner(User User, Guid LinkVersion);
-public sealed record TelegramTokens(string AccessToken, DateTimeOffset ExpiresAtUtc, string RefreshToken);
+public sealed record TelegramTokens(string AccessToken, DateTimeOffset ExpiresAtUtc, string RefreshToken, CurrentUserDto User);
 public sealed record TelegramLinkStatus(bool Linked, Guid? Version);
 public interface ITelegramAuthStore
 {
@@ -84,6 +85,7 @@ public sealed class TelegramAuthHandler(ITelegramInitDataVerifier verifier, ITel
     private TelegramTokens Issue(TelegramSessionOwner owner, string refresh)
     {
         var access = accessTokens.CreateTelegram(owner.User, owner.LinkVersion);
-        return new(access.Value, access.ExpiresAtUtc, refresh);
+        return new(access.Value, access.ExpiresAtUtc, refresh,
+            new(owner.User.Id, owner.User.Email, owner.User.BaseCurrency, owner.User.RegisteredAtUtc));
     }
 }

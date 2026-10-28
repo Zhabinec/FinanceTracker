@@ -14,7 +14,7 @@ test('private expenses: chart totals, centred history signs, responsive layout a
   const paths: string[] = []
   await page.route('**/api/**', route => {
     const path = new URL(route.request().url()).pathname; paths.push(path)
-    if (path === '/api/auth/options') return route.fulfill({ json: { telegramOnly: false, managedFinancialKeys: false } })
+    if (path === '/api/auth/options') return route.fulfill({ json: { emailRegistrationEnabled: false, telegramOnly: false, managedFinancialKeys: false } })
     if (path === '/api/auth/refresh') return route.fulfill({ json: { accessToken: 'synthetic-chart-test', expiresAtUtc: '2099-01-01T00:00:00Z' } })
     if (path === '/api/users/me') return route.fulfill({ json: { id: owner, email: 'chart@example.test', baseCurrency: 'RUB', registeredAtUtc: '2026-10-01T00:00:00Z' } })
     if (path === '/api/private-finance') return route.fulfill({ json: { vault: head } })

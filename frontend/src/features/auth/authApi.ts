@@ -9,7 +9,7 @@ export type CurrentUser = {
   baseCurrency: string
 }
 
-type TokenResponse = { accessToken: string; expiresAtUtc: string; refreshToken?: string }
+type TokenResponse = { accessToken: string; expiresAtUtc: string; refreshToken?: string; user?: CurrentUser }
 let restoreRequest: Promise<CurrentUser> | null = null
 export class TelegramLinkRequired extends Error {}
 
@@ -19,7 +19,7 @@ export async function login(email: string, password: string) {
     { email, password, ...(isTelegram() ? { initData: telegramInitData() } : {}) })
   if (isTelegram()) setTelegramRefreshToken(data.refreshToken ?? null)
   setAccessToken(data.accessToken)
-  return getCurrentUser()
+  return data.user ?? getCurrentUser()
 }
 
 export async function register(email: string, password: string) {
@@ -31,7 +31,7 @@ export async function registerTelegram() {
   const { data } = await http.post<TokenResponse>('/auth/telegram/register', { initData: telegramInitData() })
   setTelegramRefreshToken(data.refreshToken ?? null)
   setAccessToken(data.accessToken)
-  return getCurrentUser()
+  return data.user ?? getCurrentUser()
 }
 
 export function restoreSession() {
@@ -42,6 +42,7 @@ export function restoreSession() {
       if (!data.session) throw new TelegramLinkRequired('Link required')
       setTelegramRefreshToken(data.session.refreshToken ?? null)
       setAccessToken(data.session.accessToken)
+      if (data.session.user) return data.session.user
     } else await refreshAccessToken()
     return getCurrentUser()
   })()

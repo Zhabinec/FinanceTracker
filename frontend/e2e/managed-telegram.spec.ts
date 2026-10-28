@@ -13,10 +13,10 @@ async function mockApp(page: Page, { existing = false, managed = true, telegram 
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname; paths.push(path)
     const method = route.request().method()
-    if (path === '/api/auth/options') return route.fulfill({ json: { telegramOnly: true, managedFinancialKeys: true } })
+    if (path === '/api/auth/options') return route.fulfill({ json: { emailRegistrationEnabled: false, telegramOnly: true, managedFinancialKeys: true } })
     if (path === '/api/auth/telegram/options') return route.fulfill({ json: { enabled: true, botUsername: 'PetProjectFinanceBot' } })
     if (path === '/api/auth/refresh') return route.fulfill({ status: 404, json: {} })
-    if (path === '/api/auth/telegram/login') return route.fulfill({ json: { linkRequired: false, session: { accessToken: 'synthetic-managed-session', refreshToken: 'synthetic-refresh', expiresAtUtc: '2099-01-01T00:00:00Z' } } })
+    if (path === '/api/auth/telegram/login') return route.fulfill({ json: { linkRequired: false, session: { accessToken: 'synthetic-managed-session', refreshToken: 'synthetic-refresh', expiresAtUtc: '2099-01-01T00:00:00Z', user: { id: owner, email: null, baseCurrency: 'RUB', registeredAtUtc: new Date().toISOString() } } } })
     if (path === '/api/users/me') return route.fulfill({ json: { id: owner, email: null, baseCurrency: 'RUB', registeredAtUtc: new Date().toISOString() } })
     if (path === '/api/auth/telegram/link') return route.fulfill({ json: { linked: true, telegramUserId: 123, username: 'synthetic' } })
     if (path === '/api/private-finance/key/start') {
@@ -50,6 +50,7 @@ test('Telegram opens new and returning finances without a recovery code or local
   await page.reload()
   await expect(page.getByRole('navigation', { name: 'Основная навигация' })).toBeVisible()
   expect(app.paths.filter(path => path.endsWith('/key/start'))).toHaveLength(1)
+  expect(app.paths).not.toContain('/api/users/me')
   expect(await page.evaluate(() => JSON.stringify({ ...localStorage, ...sessionStorage }))).not.toContain(app.code)
 })
 

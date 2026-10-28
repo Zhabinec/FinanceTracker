@@ -15,6 +15,7 @@ import { PinFields } from './PinFields'
 import { RecoveryCodeCard } from './RecoveryCodeCard'
 import { useRuntimeOptions } from '../auth/runtimeOptions'
 import { isTelegram } from '../../platform/telegram'
+import { legacyLaunchUrl } from '../../platform/legacyLaunch'
 
 type Setup = { key: CryptoKey; code: string; document: FinancialDocument; fingerprint: string; id: string }
 export function PrivateFinanceGate({ children }: { children: ReactNode }) {
@@ -36,12 +37,12 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     const effectEpoch = ++lifecycle.current
     let active = true
     lockVault()
-    http.get<{ vault: VaultEnvelope | null }>('/private-finance').then(async ({ data }) => {
+    const vaultRequest = http.get<{ vault: VaultEnvelope | null }>('/private-finance')
+    const keyRequest = managedAvailable ? http.get<{ code: string | null }>('/private-finance/key') : Promise.resolve(null)
+    Promise.all([vaultRequest, keyRequest]).then(async ([{ data }, access]) => {
       if (!active) return
       if (managedAvailable && data.vault) {
-        const access = await http.get<{ code: string | null }>('/private-finance/key')
-        if (!active) return
-        if (access.data.code) {
+        if (access?.data.code) {
           const key = await keyFromCode(access.data.code)
           const document = await decryptDocument(data.vault, key, userId)
           if (!active) return
@@ -49,6 +50,8 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
           else { const result = await activate(data.vault, key, undefined, effectEpoch); if (active) finish(key, result.head, result.document, effectEpoch, true) }
           return
         }
+        const previousOrigin = legacyLaunchUrl(import.meta.env.VITE_LEGACY_APP_ORIGIN, location.origin, location.hash, location.search)
+        if (previousOrigin) { location.replace(previousOrigin); return }
       }
       setHead(data.vault)
     })

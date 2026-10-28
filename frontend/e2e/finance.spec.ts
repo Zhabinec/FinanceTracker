@@ -324,11 +324,12 @@ test('Telegram first launch creates an account without email and restores it aut
   await expect(page.getByLabel('Email', { exact: true })).toBeHidden()
   await page.screenshot({ path: 'test-results/telegram-first-launch.png', fullPage: true })
   const registration = page.waitForResponse(response => response.url().endsWith('/api/auth/telegram/register'))
-  const profile = page.waitForResponse(response => response.url().endsWith('/api/users/me'))
   await page.getByRole('button', { name: 'Начать в Telegram', exact: true }).click()
-  expect((await registration).status()).toBe(200)
-  const owner = await (await profile).json()
+  const registered = await registration
+  expect(registered.status()).toBe(200)
+  const owner = (await registered.json()).user
   expect(owner.email).toBeNull()
+  expect(requests).not.toContain('/api/users/me')
   await unlockFinance(page)
   await page.getByRole('link', { name: 'Аккаунт', exact: true }).click()
   await expect(page.locator('.welcome-card').getByRole('heading', { name: 'Telegram', exact: true })).toBeVisible()
