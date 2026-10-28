@@ -2,16 +2,15 @@
 
 ## Required context
 
-Before planning or implementing any non-trivial task, read `PROJECT.md`.
+Before planning or implementing any non-trivial task, read `README.md`.
 
-`PROJECT.md` is the source of truth for:
+`README.md` is the source of truth for:
 
 - product purpose;
-- developer learning goals;
-- MVP scope;
+- current product scope and limitations;
 - architectural boundaries;
 - business rules;
-- implementation order.
+- setup, deployment and verification.
 
 Do not silently contradict or expand it.
 
