@@ -138,6 +138,10 @@ public sealed partial class FinanceApiTests
         Assert.True(preview.GetProperty("canApply").GetBoolean());
         var result = await owner.PostAsJsonAsync("/api/finance/imports/csv/apply", Csv("20.00")); result.EnsureSuccessStatusCode();
         Assert.Equal(2, (await Json(result)).GetProperty("count").GetInt32());
+        var sorted = await Json(await owner.GetAsync("/api/finance/transactions?sort=amountDesc&page=1&pageSize=1"));
+        Assert.Equal("20.00", sorted.GetProperty("items")[0].GetProperty("amount").GetString());
+        var secondPage = await Json(await owner.GetAsync("/api/finance/transactions?sort=amountDesc&page=2&pageSize=1"));
+        Assert.Equal("10.00", secondPage.GetProperty("items")[0].GetProperty("amount").GetString());
         Assert.Equal(HttpStatusCode.Conflict, (await owner.PostAsJsonAsync("/api/finance/imports/csv/apply", Csv("20.00"))).StatusCode);
         var totals = await Json(await owner.GetAsync("/api/finance/dashboard?from=2026-10-01&to=2026-10-31"));
         Assert.Equal("30.00", totals.GetProperty("expense").GetString());
@@ -145,5 +149,24 @@ public sealed partial class FinanceApiTests
         Assert.Equal("-30.00", accounts[0].GetProperty("balance").GetString());
         using var scope = app.Services.CreateScope();
         Assert.Single(await scope.ServiceProvider.GetRequiredService<FinanceDbContext>().FinancialRecords.Where(x => x.UserId == identity.UserId && x.Kind == FinancialRecordKind.DailyTotal).ToListAsync());
+    }
+    [Fact]
+    public async Task AConsistentReadSnapshotDoesNotBlockWritingANewExpense()
+    {
+        using var app = ManagedApp().WithWebHostBuilder(b => b.UseSetting("FinanceRecords:Enabled", "true"));
+        using var owner = ManagedClient(app);
+        var identity = await RegisterManaged(owner); var categoryId = await Category(owner);
+        (await owner.PostAsync("/api/private-finance/key/start", null)).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync("/api/finance/migrate", new { expectedRevision = 1 })).EnsureSuccessStatusCode();
+        using var scope = app.Services.CreateScope();
+        await using var book = await scope.ServiceProvider.GetRequiredService<Finance.Application.FinancialRecords.IFinancialBooks>()
+            .OpenAsync(identity.UserId, false, CancellationToken.None);
+        Assert.Equal(0m, (await book.AccountAsync(identity.UserId, CancellationToken.None))!.Balance);
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        (await owner.PostAsJsonAsync("/api/finance/transactions", new { accountId = identity.UserId, categoryId, type = "Expense",
+            amount = "25.00", description = "Чипсы", requestId = Guid.NewGuid() }, deadline.Token)).EnsureSuccessStatusCode();
+        Assert.Equal(0, (await book.TransactionsAsync(new(), CancellationToken.None)).Count);
+        await book.CommitAsync(CancellationToken.None);
+        Assert.Equal(1, (await Json(await owner.GetAsync("/api/finance/transactions"))).GetProperty("totalCount").GetInt32());
     }
 }

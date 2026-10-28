@@ -1,3 +1,4 @@
+using System.Data;
 using Finance.Application.FinancialRecords;
 using Finance.Application.Common;
 using Finance.Application.Transactions.GetTransactions;
@@ -12,13 +13,13 @@ public sealed class FinancialBooks(FinanceDbContext db, FinancialKeyProtection k
 {
     public async Task<IFinancialBook> OpenAsync(Guid owner, bool write, CancellationToken ct)
     {
-        var transaction = await db.Database.BeginTransactionAsync(ct);
+        var transaction = await db.Database.BeginTransactionAsync(write ? IsolationLevel.ReadCommitted : IsolationLevel.RepeatableRead, ct);
         try
         {
             // Same key as legacy migration locks. A migrated workspace blocks every old write path.
             var ownerText = owner.ToString();
             if (write) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({ownerText}, 713))", ct);
-            else await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock_shared(hashtextextended({ownerText}, 713))", ct);
+            // Readers use a consistent MVCC snapshot and do not block adding a new expense.
             var workspace = await db.FinancialWorkspaces.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == owner, ct)
                 ?? throw new ConflictException("История ещё не перенесена в серверное хранилище.");
             var key = await db.ManagedFinancialKeys.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == owner && x.VaultId == workspace.VaultId, ct)
@@ -74,10 +75,22 @@ internal sealed partial class FinancialBook(FinanceDbContext db, IDbContextTrans
         {
             // Ciphertext cannot be ordered by its numeric value in SQL. Decrypt only the filtered
             // result on the trusted server, never an entire client-side financial document.
-            var values = (await rows.ToListAsync(ct)).Select(protection.Decrypt<TransactionData>);
-            var byAmount = query.Sort == "amountAsc" ? values.OrderBy(x => x.Amount) : values.OrderByDescending(x => x.Amount);
-            return (byAmount.ThenByDescending(x => x.CreatedAtUtc).ThenBy(x => x.Id)
-                .Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToArray(), count);
+            var bestFirst = Comparer<TransactionData>.Create((left, right) => {
+                var amount = left.Amount.CompareTo(right.Amount);
+                if (amount != 0) return query.Sort == "amountAsc" ? amount : -amount;
+                var created = right.CreatedAtUtc.CompareTo(left.CreatedAtUtc);
+                return created != 0 ? created : left.Id.CompareTo(right.Id);
+            });
+            var offset = (query.Page - 1) * query.PageSize;
+            var capacity = Math.Min(count, offset + query.PageSize);
+            var top = new PriorityQueue<TransactionData, TransactionData>(Comparer<TransactionData>.Create((a, b) => bestFirst.Compare(b, a)));
+            await foreach (var row in rows.AsAsyncEnumerable().WithCancellation(ct))
+            {
+                var value = protection.Decrypt<TransactionData>(row);
+                top.Enqueue(value, value);
+                if (top.Count > capacity) top.Dequeue();
+            }
+            return (top.UnorderedItems.Select(x => x.Element).Order(bestFirst).Skip(offset).Take(query.PageSize).ToArray(), count);
         }
         var ordered = query.Sort == "dateAsc" ? rows.OrderBy(x => x.OccurredOn) : rows.OrderByDescending(x => x.OccurredOn);
         var page = await ordered.ThenByDescending(x => x.CreatedAtUtc).ThenBy(x => x.Id)
