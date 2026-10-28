@@ -6,7 +6,7 @@ if command -v gitleaks >/dev/null 2>&1; then
 elif [ -x ./artifacts/security/gitleaks/gitleaks.exe ]; then
   scanner=./artifacts/security/gitleaks/gitleaks.exe
 else
-  printf '%s\n' 'Gitleaks is required for this repository hook. See docs/security.md.' >&2
+  printf '%s\n' 'Gitleaks is required for this repository hook. See README.md.' >&2
   exit 1
 fi
 
