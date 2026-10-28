@@ -26,9 +26,15 @@ public sealed class FinancialRecord
             createdAtUtc.Offset != TimeSpan.Zero || occurredOn?.Year is < 1900 or > 9998 ||
             accountId == Guid.Empty || categoryId == Guid.Empty) throw new DomainException("Некорректная финансовая запись.");
         // PostgreSQL timestamps have microsecond precision; authenticate the persisted value exactly.
-        createdAtUtc = new DateTimeOffset(createdAtUtc.Ticks - createdAtUtc.Ticks % 10, TimeSpan.Zero);
+        createdAtUtc = CanonicalTimestamp(createdAtUtc);
         return new() { UserId = userId, Kind = kind, Id = id, Version = version, CreatedAtUtc = createdAtUtc,
             OccurredOn = occurredOn, AccountId = accountId, CategoryId = categoryId };
+    }
+
+    public static DateTimeOffset CanonicalTimestamp(DateTimeOffset value)
+    {
+        if (value.Offset != TimeSpan.Zero) throw new DomainException("Время финансовой записи должно быть в UTC.");
+        return new DateTimeOffset(value.Ticks - value.Ticks % 10, TimeSpan.Zero);
     }
 
     public void Revise(Guid version, DateOnly? day = null, Guid? accountId = null, Guid? categoryId = null)

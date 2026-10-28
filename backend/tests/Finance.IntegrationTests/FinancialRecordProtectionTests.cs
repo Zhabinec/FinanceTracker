@@ -23,6 +23,19 @@ public sealed class FinancialRecordProtectionTests
         Assert.Equal("Чипсы", document.RootElement.GetProperty("description").GetString());
     }
     [Fact]
+    public void TransactionStorageDoesNotDuplicateIndexedIdentifiersInsideThePayload()
+    {
+        var owner = Guid.NewGuid(); var row = Row(owner);
+        using var protection = new FinancialRecordProtection(owner, FinancialKeyProtection.GenerateCode());
+        var value = new TransactionData(row.Id, row.AccountId!.Value, row.CategoryId!.Value, Finance.Domain.Transactions.TransactionType.Expense,
+            25m, "Чипсы", row.OccurredOn!.Value, row.CreatedAtUtc, row.Version);
+        protection.Encrypt(row, value);
+        Assert.Equal(value, protection.Decrypt<TransactionData>(row));
+        using var payload = System.Text.Json.JsonDocument.Parse(protection.Decrypt<System.Text.Json.JsonElement>(row).GetRawText());
+        Assert.False(payload.RootElement.TryGetProperty("accountId", out _));
+        Assert.True(row.Ciphertext.Length < 160);
+    }
+    [Fact]
     public void PayloadIsEncryptedWithIndependentNoncesAndExactMoney()
     {
         var owner = Guid.NewGuid(); using var protection = new FinancialRecordProtection(owner, FinancialKeyProtection.GenerateCode());

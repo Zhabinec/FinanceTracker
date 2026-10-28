@@ -30,7 +30,8 @@ public static class FinancialRules
         _ = Transaction.Create(owner, validatedCategory, type, amount, description,
             new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)), now);
         return new(previous?.Id ?? Guid.NewGuid(), account.Id, category.Id, type, amount,
-            string.IsNullOrWhiteSpace(description) ? null : description.Trim(), day, previous?.CreatedAtUtc ?? now, Guid.NewGuid());
+            string.IsNullOrWhiteSpace(description) ? null : description.Trim(), day,
+            FinancialRecord.CanonicalTimestamp(previous?.CreatedAtUtc ?? now), Guid.NewGuid());
     }
     public static AccountData CreateAccount(Guid owner, string name, string currency, decimal opening)
     {

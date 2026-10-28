@@ -40,7 +40,7 @@ public sealed class FinancialRecordProtection : IDisposable
     public void Encrypt<T>(FinancialRecord row, T value)
     {
         var aad = Aad(row);
-        var plain = JsonSerializer.SerializeToUtf8Bytes(value, Json);
+        var plain = FinancialRecordPayload.Serialize(value, Json);
         try
         {
             if (plain.Length > 16_368) throw new InvalidOperationException("Financial record payload is too large.");
@@ -62,7 +62,7 @@ public sealed class FinancialRecordProtection : IDisposable
         {
             using var aes = new AesGcm(key, 16);
             aes.Decrypt(row.Nonce, row.Ciphertext.AsSpan(0, plain.Length), row.Ciphertext.AsSpan(plain.Length), plain, aad);
-            return JsonSerializer.Deserialize<T>(plain, Json) ?? throw new CryptographicException("Empty financial record.");
+            return FinancialRecordPayload.Deserialize<T>(row, plain, Json);
         }
         finally { CryptographicOperations.ZeroMemory(plain); }
     }

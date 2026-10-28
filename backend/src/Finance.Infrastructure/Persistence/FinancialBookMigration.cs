@@ -83,7 +83,7 @@ public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProt
             if (transfer.GetProperty("cancelledAtUtc").ValueKind == JsonValueKind.Null)
             { balances[source] -= amount; balances[target] += amount; }
             Add(FinancialRecordKind.Transfer, transfer.GetProperty("id").GetGuid(), transfer.GetProperty("version").GetGuid(),
-                transfer, transfer.GetProperty("createdAtUtc").GetDateTimeOffset(),
+                transfer.Deserialize<TransferData>(Json)!, transfer.GetProperty("createdAtUtc").GetDateTimeOffset(),
                 DateOnly.ParseExact(transfer.GetProperty("occurredOn").GetString()!, "yyyy-MM-dd"), source);
             Add(FinancialRecordKind.Request, transfer.GetProperty("requestId").GetGuid(), Guid.NewGuid(),
                 new RequestReceipt(transfer.GetProperty("requestId").GetGuid(), transfer.GetProperty("id").GetGuid(), FinancialRecordKind.Transfer, "transfer"), now);
@@ -112,7 +112,7 @@ public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProt
             if (!categories.TryGetValue(categoryId, out var category) || category.Type != Finance.Domain.Transactions.TransactionType.Expense ||
                 month.Day != 1 || limit <= 0 || decimal.Round(limit, 2) != limit || limit > Finance.Domain.Transactions.Transaction.MaxAmount)
                 throw new ConflictException("Повреждён бюджет.");
-            Add(FinancialRecordKind.Budget, budget.GetProperty("id").GetGuid(), budget.GetProperty("version").GetGuid(), budget, now, month, category: categoryId);
+            Add(FinancialRecordKind.Budget, budget.GetProperty("id").GetGuid(), budget.GetProperty("version").GetGuid(), budget.Deserialize<BudgetData>(Json)!, now, month, category: categoryId);
         }
         foreach (var receipt in Read<LegacyReceipt>(root, "requests"))
             Add(FinancialRecordKind.Request, receipt.RequestId, Guid.NewGuid(),

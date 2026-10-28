@@ -44,7 +44,7 @@ public sealed class FinancialTransferHandler(ICurrentUser current, IFinancialBoo
         }
         var validated = AccountTransfer.Create(Owner, request.RequestId, AccountEntity(source), AccountEntity(target), request.Amount, request.Description, clock.UtcNow);
         var value = new TransferData(validated.Id, request.RequestId, source.Id, target.Id, validated.Currency, validated.Amount,
-            validated.Description, MoscowDate.FromUtc(validated.CreatedAtUtc), validated.CreatedAtUtc, null, validated.Version);
+            validated.Description, MoscowDate.FromUtc(validated.CreatedAtUtc), FinancialRecord.CanonicalTimestamp(validated.CreatedAtUtc), null, validated.Version);
         await book.SaveTransferAsync(value, false, ct); await book.CommitAsync(ct); return Dto(value, source.Name, target.Name);
     }
     public async Task<bool> HandleAsync(CancelFinancialTransfer request, CancellationToken ct)
