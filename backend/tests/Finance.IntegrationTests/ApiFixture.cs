@@ -9,6 +9,7 @@ using Finance.Application.Auth.Verification;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Collections.Concurrent;
+using Finance.LegacyFixtures;
 
 namespace Finance.IntegrationTests;
 
@@ -53,6 +54,7 @@ public sealed class ApiFixture : IAsyncLifetime
             builder.UseSetting("Telegram:AuthPermitLimit", "1000");
             builder.ConfigureTestServices(services =>
             {
+                services.AddLegacyFinancialFixtures();
                 services.RemoveAll<IRecoveryEmailSender>();
                 services.AddSingleton<IRecoveryEmailSender>(emails);
                 services.RemoveAll<IConfirmationEmailSender>();

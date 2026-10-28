@@ -16,11 +16,16 @@ internal static class FinancialRecordServices
 {
     public static void AddTo(IServiceCollection services)
     {
+        services.AddSingleton<Security.FinancialDownloadTickets>();
         services.AddScoped(typeof(RequestDispatcher<,>));
         services.AddScoped(typeof(IRequestBehavior<,>), typeof(AuthenticatedRequestBehavior<,>));
         services.AddScoped<IFinancialBooks, FinancialBooks>();
         services.AddScoped<IFinancialBookMigration, FinancialBookMigration>();
+        services.AddScoped<Finance.Application.LegacyFinance.ILegacyFinancialSource, LegacyFinancialSource>();
+        services.AddScoped<ILegacyKeyEnrollment, LegacyKeyEnrollment>();
         Register<MigrateFinancialBook, FinancialBookStatus, MigrateFinancialBookHandler>(services);
+        Register<OpenFinancialBook, FinancialBookStatus, MigrateFinancialBookHandler>(services);
+        Register<EnrollLegacyFinancialKey, bool, EnrollLegacyFinancialKeyHandler>(services);
         Register<SaveFinancialTransaction, TransactionDto, SaveFinancialTransactionHandler>(services);
         Register<DeleteFinancialTransaction, bool, DeleteFinancialTransactionHandler>(services);
         Register<ListFinancialTransactions, TransactionPage, ListFinancialTransactionsHandler>(services);
@@ -37,6 +42,9 @@ internal static class FinancialRecordServices
         Register<CancelFinancialTransfer, bool, FinancialTransferHandler>(services);
         Register<PreviewFinancialCsv, ImportPreview, FinancialImportHandler>(services);
         Register<ApplyFinancialCsv, ImportResult, FinancialImportHandler>(services);
+        Register<ExportFinancialBackup, EncryptedFinancialBackup, FinancialBackupHandler>(services);
+        Register<PreviewFinancialBackup, FinancialBackupPreview, FinancialBackupHandler>(services);
+        Register<RestoreFinancialBackup, bool, FinancialBackupHandler>(services);
     }
     private static void Register<TRequest, TResponse, THandler>(IServiceCollection services)
         where TRequest : class, IRequest<TResponse> where THandler : class, IRequestHandler<TRequest, TResponse> =>

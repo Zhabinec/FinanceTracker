@@ -30,6 +30,9 @@ public interface IFinancialBook : IAsyncDisposable
     Task SaveTransactionAsync(TransactionData value, TransactionData? previous, RequestReceipt? receipt, CancellationToken ct);
     Task DeleteTransactionAsync(TransactionData value, CancellationToken ct);
     Task CommitAsync(CancellationToken ct);
+    Task<EncryptedFinancialBackup> BackupAsync(CancellationToken ct);
+    FinancialBackupPreview PreviewBackup(System.Text.Json.JsonElement backup, CancellationToken ct);
+    Task RestoreBackupAsync(System.Text.Json.JsonElement backup, long expectedRevision, CancellationToken ct);
 }
 public interface IFinancialBooks
 {

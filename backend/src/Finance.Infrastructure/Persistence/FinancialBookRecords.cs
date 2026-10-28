@@ -60,7 +60,8 @@ internal sealed partial class FinancialBook
     {
         var receipt = await ReceiptAsync(requestId, ct);
         if (receipt is not null && receipt.ResourceKind != FinancialRecordKind.Transfer) throw new Finance.Application.Common.ConflictException("Запрос уже использован для другой операции.");
-        return receipt is null ? null : await TransferAsync(receipt.ResourceId, ct);
+        return receipt is null ? null : await TransferAsync(receipt.ResourceId, ct)
+            ?? throw new Finance.Application.Common.ConflictException("Перевод отсутствует в текущей истории. Повтор не восстановит его.");
     }
     public async Task<(IReadOnlyList<TransferData> Items, int Count)> TransfersAsync(int page, int pageSize, CancellationToken ct)
     {

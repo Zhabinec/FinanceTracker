@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { financeHttp as http } from '../privateFinance/financeHttp'
+import { http } from '../../api/http'
 import { getApiError } from '../../api/apiError'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { useAuth } from '../auth/useAuth'
@@ -53,11 +53,11 @@ export function AccountsPage() {
   const [showArchive, setShowArchive] = useState(false)
   const refresh = () => client.invalidateQueries({ queryKey: ['accounts'] })
   const create = useMutation({
-    mutationFn: (input: { name: string; openingBalance: string }) => http.post('/accounts', input), onSuccess: refresh,
+    mutationFn: (input: { name: string; openingBalance: string }) => http.post('/finance/accounts', input), onSuccess: refresh,
   })
   const change = useMutation({
     mutationFn: (input: { account: MoneyAccount; name: string; isArchived: boolean }) =>
-      http.put(`/accounts/${input.account.id}`, { name: input.name, isArchived: input.isArchived, version: input.account.version }),
+      http.put(`/finance/accounts/${input.account.id}`, { name: input.name, isArchived: input.isArchived, version: input.account.version }),
     onSuccess: refresh, onError: refresh,
   })
   const submit = async (event: FormEvent) => {

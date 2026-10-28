@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Finance.Domain.Ledger;
+using Finance.Application.FinancialRecords;
+using Finance.Domain.Common;
 
 namespace Finance.Infrastructure.Security;
 
@@ -67,4 +69,48 @@ public sealed class FinancialRecordProtection : IDisposable
         finally { CryptographicOperations.ZeroMemory(plain); }
     }
     public void Dispose() { if (disposed) return; CryptographicOperations.ZeroMemory(key); disposed = true; }
+    public const int MaxBackupBytes = 16_000_000;
+    private byte[] BackupAad(Guid vaultId) => Encoding.UTF8.GetBytes($"FinanceTracker:records-backup:v1:{owner}:{vaultId}");
+    public EncryptedFinancialBackup EncryptBackup(Guid vaultId, byte[] plain)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        if (plain.Length > MaxBackupBytes) throw new DomainException("Копия превышает лимит 16 МБ.");
+        var nonce = RandomNumberGenerator.GetBytes(12); var encrypted = new byte[plain.Length + 16];
+        using var aes = new AesGcm(key, 16);
+        aes.Encrypt(nonce, plain, encrypted.AsSpan(0, plain.Length), encrypted.AsSpan(plain.Length), BackupAad(vaultId));
+        return new("FinanceTrackerRecordsBackup", 1, vaultId, nonce, encrypted);
+    }
+    public byte[] DecryptBackup(Guid vaultId, EncryptedFinancialBackup backup)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        if (backup is null || backup.Format != "FinanceTrackerRecordsBackup" || backup.Version != 1 || backup.VaultId != vaultId ||
+            backup.Nonce is not { Length: 12 } || backup.Ciphertext is null || backup.Ciphertext.Length is < 17 or > MaxBackupBytes + 16)
+            throw new DomainException("Нужна зашифрованная копия этого аккаунта и хранилища.");
+        var plain = new byte[backup.Ciphertext.Length - 16];
+        try
+        {
+            using var aes = new AesGcm(key, 16);
+            aes.Decrypt(backup.Nonce, backup.Ciphertext.AsSpan(0, plain.Length), backup.Ciphertext.AsSpan(plain.Length), plain, BackupAad(vaultId));
+            return plain;
+        }
+        catch (CryptographicException) { CryptographicOperations.ZeroMemory(plain); throw new DomainException("Копия повреждена или принадлежит другому аккаунту."); }
+    }
+    public byte[] DecryptLegacyBackup(Guid vaultId, long revision, string nonce, string ciphertext)
+    {
+        ObjectDisposedException.ThrowIf(disposed, this);
+        if (revision is < 1 or > 9_007_199_254_740_990 || nonce.Length != 16 || ciphertext.Length is < 24 or > 2_666_688)
+            throw new DomainException("Некорректная прежняя копия.");
+        byte[]? plain = null;
+        try
+        {
+            var encrypted = Convert.FromBase64String(ciphertext); var iv = Convert.FromBase64String(nonce);
+            if (iv.Length != 12 || encrypted.Length < 17) throw new FormatException();
+            plain = new byte[encrypted.Length - 16]; using var aes = new AesGcm(key, 16);
+            aes.Decrypt(iv, encrypted.AsSpan(0, plain.Length), encrypted.AsSpan(plain.Length), plain,
+                Encoding.UTF8.GetBytes($"FinanceTracker:private:v1:{owner}:{vaultId}:{revision}"));
+            return plain;
+        }
+        catch (Exception e) when (e is CryptographicException or FormatException)
+        { if (plain is not null) CryptographicOperations.ZeroMemory(plain); throw new DomainException("Прежняя копия повреждена или не подходит к аккаунту."); }
+    }
 }

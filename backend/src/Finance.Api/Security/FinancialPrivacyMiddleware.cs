@@ -9,8 +9,9 @@ public sealed class FinancialPrivacyMiddleware(RequestDelegate next)
     private static readonly string[] FinancialPaths = ["/api/accounts", "/api/categories", "/api/transactions", "/api/transfers", "/api/budgets", "/api/dashboard", "/api/imports"];
     public async Task InvokeAsync(HttpContext context, FinanceDbContext db)
     {
+        if (context.GetEndpoint() is null) { await next(context); return; }
         var legacy = FinancialPaths.Any(path => context.Request.Path.StartsWithSegments(path));
-        var vault = context.Request.Path.StartsWithSegments("/api/private-finance");
+        var vault = context.Request.Path.StartsWithSegments("/api/private-finance") || context.Request.Path.StartsWithSegments("/api/finance/legacy");
         if ((!legacy && !vault) || !Guid.TryParse(context.User.FindFirst("sub")?.Value, out var userId))
         { await next(context); return; }
         // Hold the same physical connection through store transactions. Direct PostgreSQL

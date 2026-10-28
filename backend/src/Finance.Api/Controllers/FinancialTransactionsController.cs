@@ -12,6 +12,8 @@ namespace Finance.Api.Controllers;
 [ApiController, Authorize(Policy = "server-finance"), Route("api/finance"), RequestSizeLimit(16_384)]
 public sealed class FinancialTransactionsController : ControllerBase
 {
+    [HttpPost("open")]
+    public Task<FinancialBookStatus> Open([FromServices] RequestDispatcher<OpenFinancialBook, FinancialBookStatus> dispatcher, CancellationToken ct) => dispatcher.SendAsync(new(), ct);
     [HttpGet("status")]
     public async Task<FinancialBookStatus> Status([FromServices] ICurrentUser user,
         [FromServices] IFinancialBookMigration migration, CancellationToken ct) =>

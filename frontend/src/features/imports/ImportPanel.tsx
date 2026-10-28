@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { financeHttp as http } from '../privateFinance/financeHttp'
+import { http } from '../../api/http'
 import { getApiError } from '../../api/apiError'
 import { useAccounts } from '../accounts/accountApi'
 import { csvHeaders } from './csvHeaders'
@@ -32,9 +32,9 @@ export function ImportPanel() {
     if (submitting.current) return
     submitting.current = true; setBusy(true); setError(''); setNotice('')
     try {
-      if (!apply) setPreview((await http.post<Preview>('/imports/csv/preview', input)).data)
+      if (!apply) setPreview((await http.post<Preview>('/finance/imports/csv/preview', input)).data)
       else {
-        const result = (await http.post<{ count: number }>('/imports/csv/apply', input)).data
+        const result = (await http.post<{ count: number }>('/finance/imports/csv/apply', input)).data
         setNotice(`Импортировано операций: ${result.count}.`)
         setPreview(null); setContent(''); setFileName('')
         await Promise.all(['transactions', 'accounts', 'dashboard', 'budgets'].map(key => client.invalidateQueries({ queryKey: [key] })))

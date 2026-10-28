@@ -265,6 +265,10 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("MigratedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.Property<long>("SourceRevision")
                         .HasColumnType("bigint");
 
@@ -776,7 +780,7 @@ namespace Finance.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Finance.Domain.Users.ManagedFinancialKey", b =>
                 {
-                    b.HasOne("Finance.Domain.Users.PrivateFinancialVault", null)
+                    b.HasOne("Finance.Domain.Users.User", null)
                         .WithOne()
                         .HasForeignKey("Finance.Domain.Users.ManagedFinancialKey", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)

@@ -20,7 +20,7 @@ public sealed class FinancialBooks(FinanceDbContext db, FinancialKeyProtection k
             var ownerText = owner.ToString();
             if (write) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({ownerText}, 713))", ct);
             // Readers use a consistent MVCC snapshot and do not block adding a new expense.
-            var workspace = await db.FinancialWorkspaces.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == owner, ct)
+            var workspace = await db.FinancialWorkspaces.SingleOrDefaultAsync(x => x.UserId == owner, ct)
                 ?? throw new ConflictException("История ещё не перенесена в серверное хранилище.");
             var key = await db.ManagedFinancialKeys.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == owner && x.VaultId == workspace.VaultId, ct)
                 ?? throw new ConflictException("Финансовый ключ недоступен.");
@@ -143,6 +143,7 @@ internal sealed partial class FinancialBook(FinanceDbContext db, IDbContextTrans
                 x.Entity.UserId == Owner && x.Entity.Kind == FinancialRecordKind.DailyTotal &&
                 x.State is EntityState.Added or EntityState.Modified).ToArray())
                 if (protection.Decrypt<DailyTotalData>(entry.Entity).Count == 0) db.FinancialRecords.Remove(entry.Entity);
+        if (writable && db.ChangeTracker.Entries<FinancialRecord>().Any(x => x.Entity.UserId == Owner && x.State != EntityState.Unchanged)) workspace.Advance();
         try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); committed = true; }
         catch (DbUpdateConcurrencyException) { throw new ConflictException("Финансовая запись уже изменена. Обновите данные."); }
     }

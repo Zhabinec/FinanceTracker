@@ -29,6 +29,7 @@ public sealed class FinancialWorkspaceConfiguration : IEntityTypeConfiguration<F
     {
         b.ToTable("financial_workspaces");
         b.HasKey(x => x.UserId);
+        b.Property(x => x.Revision).IsConcurrencyToken();
         b.Property(x => x.BaseCurrency).HasMaxLength(3).IsRequired();
         b.HasOne<User>().WithOne().HasForeignKey<FinancialWorkspace>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }

@@ -6,7 +6,7 @@ import { useAuth } from './features/auth/useAuth'
 import './App.css'
 import './motion.css'
 import { AppShell } from './shared/AppShell'
-import { PrivateFinanceGate } from './features/privateFinance/PrivateFinanceGate'
+import { FinancialWorkspaceGate } from './features/finance/FinancialWorkspaceGate'
 import { useRuntimeOptions } from './features/auth/runtimeOptions'
 import { isTelegram } from './platform/telegram'
 import { AuthLayout } from './features/auth/AuthLayout'
@@ -27,7 +27,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (status === 'loading') return <StartupScreen />
   if (status === 'anonymous') return <Navigate to="/login" replace />
-  return <PrivateFinanceGate key={user?.id}>{children}</PrivateFinanceGate>
+  return <FinancialWorkspaceGate key={user?.id}>{children}</FinancialWorkspaceGate>
 }
 
 export default function App() {

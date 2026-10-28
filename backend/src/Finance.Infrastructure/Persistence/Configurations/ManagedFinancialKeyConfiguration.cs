@@ -13,6 +13,6 @@ public sealed class ManagedFinancialKeyConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.KeyId).HasMaxLength(32).IsRequired();
         builder.Property(x => x.Nonce).HasMaxLength(16).IsRequired();
         builder.Property(x => x.Ciphertext).HasMaxLength(256).IsRequired();
-        builder.HasOne<PrivateFinancialVault>().WithOne().HasForeignKey<ManagedFinancialKey>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne<User>().WithOne().HasForeignKey<ManagedFinancialKey>(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
     }
 }
