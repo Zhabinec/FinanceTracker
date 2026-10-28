@@ -10,6 +10,7 @@ async function setup(page: Page, telegram: boolean, pin = false) {
   const bodies: string[] = []
   await page.route('**/api/**', route => {
     const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/options') return route.fulfill({ json: { telegramOnly: false, managedFinancialKeys: false } })
     bodies.push(route.request().postData() ?? '')
     if (path === '/api/auth/telegram/login') return route.fulfill({ json: { linkRequired: false, session } })
     if (path === '/api/auth/refresh') return route.fulfill({ json: session })

@@ -81,13 +81,7 @@ public sealed class PrivateFinanceStore(FinanceDbContext db, IClock clock) : IPr
         if (legacy.Fingerprint != vault.LegacyFingerprint) throw Changed();
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         // Only after the client downloaded and verified its staged encrypted copy.
-        await db.AccountTransfers.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
-        await db.TransactionRequests.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
-        await db.MonthlyBudgets.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
-        await db.ImportBatches.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
-        await db.Transactions.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
-        await db.Categories.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
-        await db.Accounts.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
+        await DeleteLegacyAsync(db, userId, ct);
         await db.Users.Where(a => a.Id == userId).ExecuteUpdateAsync(s => s.SetProperty(a => a.BaseCurrency, "RUB"), ct);
         vault.Activate();
         await db.SaveChangesAsync(ct);
@@ -113,6 +107,16 @@ public sealed class PrivateFinanceStore(FinanceDbContext db, IClock clock) : IPr
         if (vault.IsActive || vault.Revision != revision) throw Changed();
         db.PrivateFinancialVaults.Remove(vault);
         await db.SaveChangesAsync(ct);
+    }
+    internal static async Task DeleteLegacyAsync(FinanceDbContext db, Guid userId, CancellationToken ct)
+    {
+        await db.AccountTransfers.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.TransactionRequests.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.MonthlyBudgets.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.ImportBatches.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.Transactions.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.Categories.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
+        await db.Accounts.Where(a => a.UserId == userId).ExecuteDeleteAsync(ct);
     }
     private async Task<PrivateFinancialVault> Find(Guid userId, Guid id, CancellationToken ct) =>
         await db.PrivateFinancialVaults.SingleOrDefaultAsync(v => v.UserId == userId && v.Id == id, ct) ?? throw Changed();

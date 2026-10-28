@@ -21,11 +21,13 @@ public sealed class AuthController(
     IConfiguration configuration,
     Finance.Infrastructure.Security.RecoveryEmailOptions emailOptions) : ControllerBase
 {
-    private bool EmailRegistrationEnabled => configuration.GetValue("Auth:EmailRegistrationEnabled",
+    private bool EmailRegistrationEnabled => !configuration.GetValue<bool>("Auth:TelegramOnly") && configuration.GetValue("Auth:EmailRegistrationEnabled",
         emailOptions.Provider == "Mailpit");
 
     [HttpGet("options")]
-    public IActionResult Options() => Ok(new { emailRegistrationEnabled = EmailRegistrationEnabled });
+    public IActionResult Options() => Ok(new { emailRegistrationEnabled = EmailRegistrationEnabled,
+        telegramOnly = configuration.GetValue<bool>("Auth:TelegramOnly"),
+        managedFinancialKeys = configuration.GetValue<bool>("FinanceKeys:Enabled") });
 
     [HttpPost("register")]
     [EnableRateLimiting("password-recovery")]

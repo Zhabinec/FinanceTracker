@@ -90,6 +90,16 @@ builder.Services.AddScoped<Finance.Application.Dashboard.IDashboardStore, Dashbo
 builder.Services.AddScoped<Finance.Application.Dashboard.DashboardHandler>();
 builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
 builder.Services.AddSingleton(new TelegramSettings(builder.Configuration["Telegram:BotToken"] ?? "", builder.Configuration["Telegram:BotUsername"] ?? "PetProjectFinanceBot"));
+var telegramOnly = builder.Configuration.GetValue<bool>("Auth:TelegramOnly");
+var financialKeys = new FinancialKeySettings(builder.Configuration.GetValue<bool>("FinanceKeys:Enabled"),
+    builder.Configuration["FinanceKeys:ActiveKeyId"] ?? "", builder.Configuration.GetSection("FinanceKeys:Keys")
+        .GetChildren().ToDictionary(x => x.Key, x => x.Value ?? ""));
+if (financialKeys.Enabled && (!telegramOnly || string.IsNullOrWhiteSpace(builder.Configuration["Telegram:BotToken"])))
+    throw new InvalidOperationException("Managed financial keys require Telegram-only mode and a configured bot.");
+builder.Services.AddSingleton(financialKeys);
+builder.Services.AddSingleton(new FinancialKeyProtection(financialKeys));
+builder.Services.AddScoped<Finance.Application.PrivateFinance.IManagedKeyStore, ManagedKeyStore>();
+builder.Services.AddScoped<Finance.Application.PrivateFinance.ManagedKeyHandler>();
 builder.Services.AddSingleton<ITelegramInitDataVerifier, TelegramInitDataVerifier>();
 builder.Services.AddScoped<ITelegramAuthStore, TelegramAuthStore>();
 builder.Services.AddScoped<TelegramAuthHandler>();
@@ -206,6 +216,7 @@ builder.Services
                 var store = context.HttpContext.RequestServices.GetRequiredService<IUserProfileStore>();
                 var user = await store.FindByIdAsync(userId, context.HttpContext.RequestAborted);
                 var telegramVersion = context.Principal?.FindFirst("telegram_link")?.Value;
+                if (telegramOnly && telegramVersion is null) { context.Fail("Open the application through Telegram."); return; }
                 if (user is null || (user.EmailConfirmedAtUtc is null && (user.Email is not null || telegramVersion is null)) || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
                 { context.Fail("Session is no longer valid."); return; }
                 if (telegramVersion is not null)
@@ -273,6 +284,16 @@ if (builder.Configuration.GetValue("Http:RedirectToHttps", true)) app.UseHttpsRe
 app.UseHostedFrontend();
 
 app.UseRateLimiter();
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    if (telegramOnly && (path.StartsWithSegments("/api/auth/google") ||
+        new[] { "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/confirm-email", "/api/auth/resend-confirmation" }
+            .Any(blocked => string.Equals(path.Value?.TrimEnd('/'), blocked, StringComparison.OrdinalIgnoreCase)) ||
+        (HttpMethods.IsDelete(context.Request.Method) && path.StartsWithSegments("/api/auth/telegram/link"))))
+    { context.Response.StatusCode = StatusCodes.Status404NotFound; return; }
+    await next(context);
+});
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<FinancialPrivacyMiddleware>();

@@ -30,6 +30,14 @@ services:
         sync: false
       - key: Telegram__BotUsername
         value: PetProjectFinanceBot
+      - key: Auth__TelegramOnly
+        value: 'true'
+      - key: FinanceKeys__Enabled
+        value: 'true'
+      - key: FinanceKeys__ActiveKeyId
+        value: v1
+      - key: FinanceKeys__Keys__v1
+        sync: false
       - key: Email__Provider
         value: Resend
       - key: Email__Endpoint

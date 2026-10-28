@@ -13,7 +13,7 @@ public static class FrontendHosting
         {
             context.Response.Headers.XContentTypeOptions = "nosniff";
             context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-            context.Response.Headers.ContentSecurityPolicy = "frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://t.me";
+            context.Response.Headers.ContentSecurityPolicy = "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self' https://web.telegram.org https://*.telegram.org https://t.me";
             await next(context);
         });
         app.UseDefaultFiles();

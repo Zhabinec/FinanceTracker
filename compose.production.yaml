@@ -35,6 +35,10 @@ services:
       Email__ApiKey: ${EMAIL_API_KEY:?Set the email provider API key}
       Telegram__BotToken: ${TELEGRAM_BOT_TOKEN:-}
       Telegram__BotUsername: ${TELEGRAM_BOT_USERNAME:-PetProjectFinanceBot}
+      Auth__TelegramOnly: ${TELEGRAM_ONLY:-false}
+      FinanceKeys__Enabled: ${MANAGED_FINANCIAL_KEYS:-false}
+      FinanceKeys__ActiveKeyId: v1
+      FinanceKeys__Keys__v1: ${FINANCIAL_WRAPPING_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

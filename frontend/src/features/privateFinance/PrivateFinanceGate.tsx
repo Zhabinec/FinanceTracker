@@ -10,13 +10,17 @@ import { TelegramLinkPanel } from '../auth/TelegramLinkPanel'
 import { decryptDocument, encryptDocument, newRecoveryCode, keyFromCode, backupEnvelope } from './crypto'
 import { parseDocument, type FinancialDocument, type VaultEnvelope } from './model'
 import { exportEncryptedBackup, lockVault, openVault, retryPendingSave, subscribeVault, vaultSnapshot, loadServerVersion, keepEncryptedPending } from './session'
-import { hasDevicePin, saveDevicePin, unlockWithDevicePin } from './devicePin'
+import { hasDevicePin, removeDevicePin, saveDevicePin, unlockWithDevicePin } from './devicePin'
 import { PinFields } from './PinFields'
 import { RecoveryCodeCard } from './RecoveryCodeCard'
+import { useRuntimeOptions } from '../auth/runtimeOptions'
+import { isTelegram } from '../../platform/telegram'
 
 type Setup = { key: CryptoKey; code: string; document: FinancialDocument; fingerprint: string; id: string }
 export function PrivateFinanceGate({ children }: { children: ReactNode }) {
   const auth = useAuth(), userId = auth.user!.id, client = useQueryClient()
+  const options = useRuntimeOptions()
+  const managedAvailable = options.managedFinancialKeys && isTelegram()
   const session = useSyncExternalStore(subscribeVault, vaultSnapshot)
   const [head, setHead] = useState<VaultEnvelope | null | undefined>()
   const [setup, setSetup] = useState<Setup | null>(null)
@@ -32,13 +36,30 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     const effectEpoch = ++lifecycle.current
     let active = true
     lockVault()
-    http.get<{ vault: VaultEnvelope | null }>('/private-finance').then(({ data }) => { if (active) setHead(data.vault) })
+    http.get<{ vault: VaultEnvelope | null }>('/private-finance').then(async ({ data }) => {
+      if (!active) return
+      if (managedAvailable && data.vault) {
+        const access = await http.get<{ code: string | null }>('/private-finance/key')
+        if (!active) return
+        if (access.data.code) {
+          const key = await keyFromCode(access.data.code)
+          const document = await decryptDocument(data.vault, key, userId)
+          if (!active) return
+          if (data.vault.isActive) finish(key, data.vault, document, effectEpoch, true)
+          else { const result = await activate(data.vault, key, undefined, effectEpoch); if (active) finish(key, result.head, result.document, effectEpoch, true) }
+          return
+        }
+      }
+      setHead(data.vault)
+    })
       .catch(e => { if (active) setError(getApiError(e, 'Не удалось загрузить хранилище.')) })
     return () => {
       active = false; lifecycle.current = effectEpoch + 1; lockVault()
       client.removeQueries({ predicate: query => ['accounts', 'transfers', 'categories', 'transactions', 'dashboard', 'budgets'].includes(String(query.queryKey[0])) })
     }
-  }, [userId, client])
+    // Initial load is scoped to the authenticated identity and immutable runtime policy.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, client, managedAvailable])
   useEffect(() => {
     let active = true
     if (head?.isActive && !session.unlocked) void hasDevicePin(userId, head.id).then(available => {
@@ -63,7 +84,7 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     } catch (e) { setError(message(e)) }
     finally { setBusy(false) }
   }
-  const activate = async (envelope: VaultEnvelope, key: CryptoKey, expected: FinancialDocument | undefined, epoch: number) => {
+  async function activate(envelope: VaultEnvelope, key: CryptoKey, expected: FinancialDocument | undefined, epoch: number) {
     // Download and decrypt what was actually persisted, before requesting removal of legacy rows.
     const { data } = await http.get<{ vault: VaultEnvelope | null }>('/private-finance')
     ensureActive(epoch)
@@ -77,9 +98,12 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     if (!result.data.isActive || result.data.ciphertext !== data.vault.ciphertext || result.data.nonce !== data.vault.nonce) throw new Error('Не удалось проверить завершение переноса.')
     return { head: result.data, document }
   }
-  const finish = (key: CryptoKey, envelope: VaultEnvelope, document: FinancialDocument, epoch: number) => {
+  function finish(key: CryptoKey, envelope: VaultEnvelope, document: FinancialDocument, epoch: number, managed = false) {
     ensureActive(epoch)
-    client.clear(); openVault(userId, key, envelope, document); setHead(envelope); setCode(''); setSetup(null); setError('')
+    // The managed path no longer needs a weak local PIN-wrapped copy of the key.
+    // Storage denial must not prevent an otherwise verified Telegram session from opening.
+    if (managed) void removeDevicePin(userId, envelope.id).catch(() => undefined)
+    client.clear(); openVault(userId, key, envelope, document, managed); setHead(envelope); setCode(''); setSetup(null); setError('')
     setBackup(null); setRestoreConfirmed(false); setAccountOpen(false); setSaved(false)
     setPin(''); setRepeatPin(''); setEnablePin(false)
   }
@@ -87,6 +111,22 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     if (!enablePin) return
     if (!/^\d{6}$/.test(pin) || pin !== repeatPin) throw new Error('Введите одинаковый PIN из 6 цифр в обоих полях.')
     await saveDevicePin(userId, vaultId, recoveryCode, pin)
+  }
+  const startManaged = async () => {
+    if (busy) return
+    const epoch = lifecycle.current
+    setBusy(true); setError('')
+    try {
+      const { data: envelope } = await http.post<VaultEnvelope>('/private-finance/key/start')
+      ensureActive(epoch)
+      const { data } = await http.get<{ code: string | null }>('/private-finance/key')
+      ensureActive(epoch)
+      if (!data.code) throw new Error('Не удалось получить доступ к финансам. Повторите открытие.')
+      const key = await keyFromCode(data.code)
+      const document = await decryptDocument(envelope, key, userId)
+      finish(key, envelope, document, epoch, true)
+    } catch (e) { if (lifecycle.current === epoch) setError(message(e)) }
+    finally { if (lifecycle.current === epoch) setBusy(false) }
   }
   const create = async () => {
     if (!setup || !saved || busy) return
@@ -175,7 +215,7 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     {children}
   </AuthContext.Provider>
   return <main className="private-gate" data-vault-user={userId}><section className="transactions-list-card">
-    <h1>{head?.isActive ? 'Разблокировать финансы' : head ? 'Завершить защиту записей' : setup ? 'Сохраните код восстановления' : 'Защитим ваши финансы'}</h1>
+    <h1>{head?.isActive ? 'Разблокировать финансы' : head ? 'Завершить защиту записей' : setup ? 'Сохраните код восстановления' : managedAvailable ? 'Ваши финансы в Telegram' : 'Защитим ваши финансы'}</h1>
     {error && <p className="notice error" role="alert">{error}</p>}
     {head === undefined ? <><p role="status">Загружаем…</p>{error && <button className="ghost-button" onClick={() => location.reload()}>Повторить</button>}</>
       : head ? <form onSubmit={e => { e.preventDefault(); void unlock() }}>
@@ -216,13 +256,16 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
         <p className="muted">Продолжая, вы переносите записи в защищённое хранилище. Сами записи сохранятся.</p>
         <details className="panel-disclosure"><summary>Что будет с прежними записями?</summary><p>Сначала проверим защищённую копию. Только после этого удалим прежнюю незашифрованную версию. Если проверка не пройдёт, записи останутся как были.</p></details>
         <button className="primary-button" disabled={busy || !saved} onClick={() => void create()}>{busy ? 'Подготавливаем…' : 'Начать пользоваться'}</button>
+      </> : managedAvailable ? <>
+        <p>История будет доступна через ваш Telegram-аккаунт на ваших устройствах. Записи и ключ хранятся на сервере в зашифрованном виде.</p>
+        <button className="primary-button" disabled={busy} onClick={() => void startManaged()}>{busy ? 'Открываем…' : 'Начать пользоваться'}</button>
       </> : <>
         <p>Сохраните код восстановления один раз. Дальше на своём устройстве можно входить по короткому PIN.</p>
         <button className="primary-button" disabled={busy} onClick={() => { setEnablePin(true); void prepare() }}>{busy ? 'Подготавливаем…' : 'Настроить вход по PIN'}</button>
         <button className="text-button" disabled={busy} onClick={() => { setEnablePin(false); void prepare() }}>Только код восстановления</button>
       </>}
     <details className="panel-disclosure" onToggle={e => setAccountOpen(e.currentTarget.open)}><summary>Доступ к аккаунту</summary>
-      {accountOpen && <><p>{auth.user?.email ?? 'Telegram'}</p>{auth.user?.email && <Link to="/forgot-password">Сменить пароль</Link>}<TelegramLinkPanel /></>}
+      {accountOpen && <><p>{auth.user?.email ?? 'Telegram'}</p>{auth.user?.email && !options.telegramOnly && <Link to="/forgot-password">Сменить пароль</Link>}<TelegramLinkPanel /></>}
     </details>
     <button className="text-button" type="button" disabled={busy} onClick={() => void auth.signOut()}>Выйти из аккаунта</button>
   </section></main>
