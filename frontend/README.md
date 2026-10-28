@@ -1,24 +1,41 @@
 # Finance Tracker frontend
 
-React + TypeScript + Vite. Функции: auth, categories, transactions, dashboard.
-Полная инструкция запуска, настройки API, Docker и тестов — в [корневом README](../README.md).
+React + TypeScript + Vite. Один клиент для браузера и Telegram Mini App. Разделы: auth, categories, transactions, dashboard, accounts, budgets, imports и privateFinance.
 
-```powershell
+## Запуск
+
+Из frontend:
+
+~~~powershell
 npm ci
 npm run dev
-```
+~~~
 
-Vite: http://localhost:5173. Прокси /api: http://localhost:5280.
+Vite: http://localhost:5173, proxy /api: http://localhost:5280. Нужен backend с PostgreSQL. [Полный запуск, секреты и миграции](../docs/local-development.md).
 
-```powershell
+Публичный экран предлагает Telegram/Google. Локальная Mailpit-регистрация — /register, парольный вход — /login/password.
+
+## Проверки
+
+~~~powershell
 npm test
 npm run lint
 npm run build
-npx playwright install chromium
-npm run test:e2e
-```
+~~~
 
-E2E ожидает запущенное приложение на http://localhost:5180. Другой адрес задаётся через E2E_BASE_URL.
-Отчёты и скриншоты сохраняются в playwright-report и test-results и исключены из Git.
-Деньги принимаются как строки; не преобразовывайте их в JavaScript number.
-Календарные даты отображаются без преобразования в часовой пояс браузера.
+dist — production build. npm run preview показывает сборку, но не заменяет API.
+
+[Playwright и CI](../docs/testing.md). playwright-report и test-results игнорируются Git.
+
+## Поток данных
+
+features/privateFinance/financeHttp выполняет финансовые действия через клиентский ledger и сохраняет только зашифрованный документ. Серверные /transactions и /dashboard не читают приватные суммы.
+
+- Деньги — строки и BigInt-копейки.
+- Даты — календарные, без смещения timezone браузера.
+- Ключ и открытый документ — в памяти сессии.
+- PIN хранит зашифрованный код в IndexedDB после явной настройки.
+- Pending ciphertext может сохраняться на время жизни вкладки.
+- CSS-анимации учитывают prefers-reduced-motion.
+
+[Архитектура](../docs/architecture.md), [формат и границы приватности](../docs/decisions/private-financial-vault.md).
