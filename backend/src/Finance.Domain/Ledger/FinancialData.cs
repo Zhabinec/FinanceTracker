@@ -9,7 +9,11 @@ public sealed record AccountData(Guid Id, string Name, string Currency, decimal 
 public sealed record CategoryData(Guid Id, string Name, TransactionType Type, bool IsActive, Guid Version);
 public sealed record TransactionData(Guid Id, Guid AccountId, Guid CategoryId, TransactionType Type, decimal Amount,
     string? Description, DateOnly OccurredOn, DateTimeOffset CreatedAtUtc, Guid Version);
-public sealed record RequestReceipt(Guid RequestId, Guid TransactionId, string Fingerprint);
+public sealed record RequestReceipt(Guid RequestId, Guid ResourceId, FinancialRecordKind ResourceKind, string Fingerprint);
+public sealed record BudgetData(Guid Id, Guid CategoryId, DateOnly Month, decimal Limit, Guid Version);
+public sealed record TransferData(Guid Id, Guid RequestId, Guid SourceAccountId, Guid TargetAccountId, string Currency,
+    decimal Amount, string? Description, DateOnly OccurredOn, DateTimeOffset CreatedAtUtc, DateTimeOffset? CancelledAtUtc, Guid Version);
+public sealed record DailyTotalData(Guid AccountId, Guid CategoryId, DateOnly Day, TransactionType Type, decimal Amount, int Count);
 
 public static class FinancialRules
 {

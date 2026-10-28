@@ -11,9 +11,11 @@ namespace Finance.Infrastructure.Persistence;
 
 public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProtection keys, IClock clock) : IFinancialBookMigration
 {
+    private sealed record LegacyReceipt(Guid RequestId, Guid TransactionId, string Fingerprint);
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
         NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         Converters = { new JsonStringEnumConverter() }
     };
     public async Task<FinancialBookStatus> StatusAsync(Guid owner, CancellationToken ct)
@@ -43,6 +45,8 @@ public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProt
         using var document = FinancialKeyProtection.DecryptDocument(code, vault);
         var root = document.RootElement;
         if (root.GetProperty("format").GetInt32() != 1) throw new ConflictException("Неизвестный формат истории.");
+        string[] fields = ["format", "baseCurrency", "accounts", "categories", "transactions", "transfers", "budgets", "requests", "imports"];
+        if (root.EnumerateObject().Any(x => !fields.Contains(x.Name))) throw new ConflictException("История содержит неподдерживаемые разделы. Перенос отменён без изменений.");
         var currency = root.GetProperty("baseCurrency").GetString() ?? throw new ConflictException("Не задана валюта.");
         using var protection = new FinancialRecordProtection(owner, code);
         var now = clock.UtcNow;
@@ -50,6 +54,9 @@ public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProt
         var categories = Read<CategoryData>(root, "categories").Select(x => x.Version == Guid.Empty ? x with { Version = x.Id } : x).ToDictionary(x => x.Id);
         var entries = Read<TransactionData>(root, "transactions");
         if (accounts.Count == 0) throw new ConflictException("В истории нет счёта.");
+        if (accounts.Values.GroupBy(x => x.Name.Trim().ToUpperInvariant()).Any(x => x.Count() > 1) ||
+            categories.Values.GroupBy(x => new { Name = x.Name.Trim().ToUpperInvariant(), x.Type }).Any(x => x.Count() > 1))
+            throw new ConflictException("В истории повторяются названия счетов или категорий. Исправьте их перед переносом.");
         var balances = accounts.ToDictionary(x => x.Key, x => x.Value.OpeningBalance);
         foreach (var entry in entries)
         {
@@ -78,6 +85,14 @@ public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProt
             Add(FinancialRecordKind.Transfer, transfer.GetProperty("id").GetGuid(), transfer.GetProperty("version").GetGuid(),
                 transfer, transfer.GetProperty("createdAtUtc").GetDateTimeOffset(),
                 DateOnly.ParseExact(transfer.GetProperty("occurredOn").GetString()!, "yyyy-MM-dd"), source);
+            Add(FinancialRecordKind.Request, transfer.GetProperty("requestId").GetGuid(), Guid.NewGuid(),
+                new RequestReceipt(transfer.GetProperty("requestId").GetGuid(), transfer.GetProperty("id").GetGuid(), FinancialRecordKind.Transfer, "transfer"), now);
+        }
+        foreach (var group in entries.GroupBy(x => new { x.AccountId, x.CategoryId, x.OccurredOn, x.Type }))
+        {
+            var daily = new DailyTotalData(group.Key.AccountId, group.Key.CategoryId, group.Key.OccurredOn, group.Key.Type, group.Sum(x => x.Amount), group.Count());
+            Add(FinancialRecordKind.DailyTotal, FinancialBook.DailyId(owner, daily.AccountId, daily.CategoryId, daily.Day),
+                Guid.NewGuid(), daily, now, daily.Day, daily.AccountId, daily.CategoryId);
         }
         foreach (var account in accounts.Values)
         {
@@ -99,8 +114,9 @@ public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProt
                 throw new ConflictException("Повреждён бюджет.");
             Add(FinancialRecordKind.Budget, budget.GetProperty("id").GetGuid(), budget.GetProperty("version").GetGuid(), budget, now, month, category: categoryId);
         }
-        foreach (var receipt in Read<RequestReceipt>(root, "requests"))
-            Add(FinancialRecordKind.Request, receipt.RequestId, Guid.NewGuid(), receipt, now);
+        foreach (var receipt in Read<LegacyReceipt>(root, "requests"))
+            Add(FinancialRecordKind.Request, receipt.RequestId, Guid.NewGuid(),
+                new RequestReceipt(receipt.RequestId, receipt.TransactionId, FinancialRecordKind.Transaction, receipt.Fingerprint), now);
         foreach (var hash in root.GetProperty("imports").EnumerateArray().Select(x => x.GetString()!))
         {
             if (hash.Length != 64 || !hash.All(Uri.IsHexDigit)) throw new ConflictException("Повреждена квитанция импорта.");

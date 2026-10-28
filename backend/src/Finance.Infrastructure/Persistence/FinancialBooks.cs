@@ -29,15 +29,21 @@ public sealed class FinancialBooks(FinanceDbContext db, FinancialKeyProtection k
     }
 }
 
-internal sealed class FinancialBook(FinanceDbContext db, IDbContextTransaction transaction, FinancialRecordProtection protection,
+internal sealed partial class FinancialBook(FinanceDbContext db, IDbContextTransaction transaction, FinancialRecordProtection protection,
     FinancialWorkspace workspace, bool writable) : IFinancialBook
 {
+    private bool committed;
     public string BaseCurrency => workspace.BaseCurrency;
     private Guid Owner => workspace.UserId;
     private IQueryable<FinancialRecord> Rows(FinancialRecordKind kind) => db.FinancialRecords.Where(x => x.UserId == Owner && x.Kind == kind);
+    private Task<FinancialRecord?> FindRow(FinancialRecordKind kind, Guid id, CancellationToken ct)
+    {
+        var local = db.FinancialRecords.Local.FirstOrDefault(x => x.UserId == Owner && x.Kind == kind && x.Id == id);
+        return local is null ? Rows(kind).SingleOrDefaultAsync(x => x.Id == id, ct) : Task.FromResult<FinancialRecord?>(local);
+    }
     private async Task<T?> Read<T>(FinancialRecordKind kind, Guid id, CancellationToken ct) where T : class
     {
-        var row = await Rows(kind).SingleOrDefaultAsync(x => x.Id == id, ct);
+        var row = await FindRow(kind, id, ct);
         return row is null ? null : protection.Decrypt<T>(row);
     }
     public Task<AccountData?> AccountAsync(Guid id, CancellationToken ct) => Read<AccountData>(FinancialRecordKind.Account, id, ct);
@@ -80,10 +86,10 @@ internal sealed class FinancialBook(FinanceDbContext db, IDbContextTransaction t
     }
     private void RequireWrite() { if (!writable) throw new InvalidOperationException("Cannot change a read-only financial book."); }
     private async Task Save<T>(FinancialRecordKind kind, Guid id, Guid version, T payload, DateTimeOffset created,
-        CancellationToken ct, DateOnly? day = null, Guid? account = null, Guid? category = null)
+        CancellationToken ct, DateOnly? day = null, Guid? account = null, Guid? category = null, bool isNew = false)
     {
         RequireWrite();
-        var row = await Rows(kind).SingleOrDefaultAsync(x => x.Id == id, ct);
+        var row = isNew ? null : await FindRow(kind, id, ct);
         if (row is null)
         {
             row = FinancialRecord.Create(Owner, kind, id, version, created, day, account, category);
@@ -101,28 +107,36 @@ internal sealed class FinancialBook(FinanceDbContext db, IDbContextTransaction t
     public async Task SaveTransactionAsync(TransactionData value, TransactionData? previous, RequestReceipt? receipt, CancellationToken ct)
     {
         RequireWrite();
-        if (previous is not null) await ChangeBalance(previous.AccountId, -FinancialRules.Signed(previous), ct);
+        if (previous is not null) { await ChangeBalance(previous.AccountId, -FinancialRules.Signed(previous), ct); await ChangeDaily(previous, -1, ct); }
         await ChangeBalance(value.AccountId, FinancialRules.Signed(value), ct);
+        await ChangeDaily(value, 1, ct);
         await Save(FinancialRecordKind.Transaction, value.Id, value.Version, value, value.CreatedAtUtc, ct,
-            value.OccurredOn, value.AccountId, value.CategoryId);
-        if (receipt is not null) await Save(FinancialRecordKind.Request, receipt.RequestId, Guid.NewGuid(), receipt, value.CreatedAtUtc, ct);
+            value.OccurredOn, value.AccountId, value.CategoryId, isNew: previous is null);
+        if (receipt is not null) await Save(FinancialRecordKind.Request, receipt.RequestId, Guid.NewGuid(), receipt, value.CreatedAtUtc, ct, isNew: true);
     }
     public async Task DeleteTransactionAsync(TransactionData value, CancellationToken ct)
     {
         RequireWrite();
         await ChangeBalance(value.AccountId, -FinancialRules.Signed(value), ct);
+        await ChangeDaily(value, -1, ct);
         var row = await Rows(FinancialRecordKind.Transaction).SingleAsync(x => x.Id == value.Id, ct);
         db.FinancialRecords.Remove(row);
         // Keep the receipt: retrying an old create must never resurrect a deleted entry.
     }
     public async Task CommitAsync(CancellationToken ct)
     {
-        try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
+        if (writable)
+            foreach (var entry in db.ChangeTracker.Entries<FinancialRecord>().Where(x =>
+                x.Entity.UserId == Owner && x.Entity.Kind == FinancialRecordKind.DailyTotal &&
+                x.State is EntityState.Added or EntityState.Modified).ToArray())
+                if (protection.Decrypt<DailyTotalData>(entry.Entity).Count == 0) db.FinancialRecords.Remove(entry.Entity);
+        try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); committed = true; }
         catch (DbUpdateConcurrencyException) { throw new ConflictException("Финансовая запись уже изменена. Обновите данные."); }
     }
     public async ValueTask DisposeAsync()
     {
         protection.Dispose();
         await transaction.DisposeAsync();
+        if (!committed) db.ChangeTracker.Clear();
     }
 }

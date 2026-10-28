@@ -244,14 +244,7 @@ builder.Services
 builder.Services.AddAuthorization(options => options.AddPolicy("server-finance", policy =>
     policy.RequireAuthenticatedUser().RequireClaim("telegram_link").RequireAssertion(_ =>
         builder.Configuration.GetValue<bool>("FinanceRecords:Enabled") && financialKeys.Enabled && telegramOnly)));
-builder.Services.AddScoped(typeof(Finance.Application.Messaging.RequestDispatcher<,>));
-builder.Services.AddScoped(typeof(Finance.Application.Messaging.IRequestBehavior<,>), typeof(Finance.Application.Messaging.AuthenticatedRequestBehavior<,>));
-builder.Services.AddScoped<Finance.Application.FinancialRecords.IFinancialBooks, FinancialBooks>();
-builder.Services.AddScoped<Finance.Application.FinancialRecords.IFinancialBookMigration, FinancialBookMigration>();
-builder.Services.AddScoped<Finance.Application.Messaging.IRequestHandler<Finance.Application.FinancialRecords.MigrateFinancialBook, Finance.Application.FinancialRecords.FinancialBookStatus>, Finance.Application.FinancialRecords.MigrateFinancialBookHandler>();
-builder.Services.AddScoped<Finance.Application.Messaging.IRequestHandler<Finance.Application.FinancialRecords.SaveFinancialTransaction, Finance.Application.Transactions.TransactionDto>, Finance.Application.FinancialRecords.SaveFinancialTransactionHandler>();
-builder.Services.AddScoped<Finance.Application.Messaging.IRequestHandler<Finance.Application.FinancialRecords.DeleteFinancialTransaction, bool>, Finance.Application.FinancialRecords.DeleteFinancialTransactionHandler>();
-builder.Services.AddScoped<Finance.Application.Messaging.IRequestHandler<Finance.Application.FinancialRecords.ListFinancialTransactions, Finance.Application.Transactions.GetTransactions.TransactionPage>, Finance.Application.FinancialRecords.ListFinancialTransactionsHandler>();
+Finance.Api.FinancialRecordServices.AddTo(builder.Services);
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

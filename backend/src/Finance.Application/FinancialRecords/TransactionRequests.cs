@@ -33,8 +33,8 @@ public sealed class SaveFinancialTransactionHandler(ICurrentUser current, IFinan
         })));
         if (request.Id is null && await book.ReceiptAsync(request.RequestId, ct) is { } receipt)
         {
-            if (receipt.Fingerprint != fingerprint) throw new ConflictException("Запрос уже использован для другой операции.");
-            var saved = await book.TransactionAsync(receipt.TransactionId, ct)
+            if (receipt.ResourceKind != FinancialRecordKind.Transaction || receipt.Fingerprint != fingerprint) throw new ConflictException("Запрос уже использован для другой операции.");
+            var saved = await book.TransactionAsync(receipt.ResourceId, ct)
                 ?? throw new ConflictException("Операция уже удалена. Повтор запроса её не восстановит.");
             var savedCategory = await book.CategoryAsync(saved.CategoryId, ct) ?? throw new InvalidOperationException("Category is missing.");
             await book.CommitAsync(ct);
@@ -48,7 +48,7 @@ public sealed class SaveFinancialTransactionHandler(ICurrentUser current, IFinan
         var category = await book.CategoryAsync(request.CategoryId, ct) ?? throw new FinancialRecordNotFoundException();
         var entry = FinancialRules.Create(owner, account, category, request.Type, request.Amount, request.Description,
             request.OccurredOn ?? MoscowDate.FromUtc(clock.UtcNow), clock.UtcNow, previous);
-        await book.SaveTransactionAsync(entry, previous, previous is null ? new(request.RequestId, entry.Id, fingerprint) : null, ct);
+        await book.SaveTransactionAsync(entry, previous, previous is null ? new(request.RequestId, entry.Id, FinancialRecordKind.Transaction, fingerprint) : null, ct);
         await book.CommitAsync(ct);
         return Dto(entry, category.Name);
     }

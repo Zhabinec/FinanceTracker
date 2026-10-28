@@ -84,4 +84,66 @@ public sealed partial class FinanceApiTests
         await RegisterManaged(owner);
         Assert.Equal(HttpStatusCode.Forbidden, (await owner.PostAsJsonAsync("/api/finance/migrate", new { expectedRevision = 1 })).StatusCode);
     }
+    [Fact]
+    public async Task EncryptedDailyTotalsBudgetsAndAccountBalancesFollowServerCommands()
+    {
+        using var app = ManagedApp().WithWebHostBuilder(b => b.UseSetting("FinanceRecords:Enabled", "true"));
+        using var owner = ManagedClient(app);
+        var identity = await RegisterManaged(owner);
+        var categoryId = await Category(owner);
+        (await owner.PostAsync("/api/private-finance/key/start", null)).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync("/api/finance/migrate", new { expectedRevision = 1 })).EnsureSuccessStatusCode();
+        var createdAccount = await owner.PostAsJsonAsync("/api/finance/accounts", new { name = "Карта", openingBalance = "100.00" }); createdAccount.EnsureSuccessStatusCode();
+        var account = await Json(createdAccount); var accountId = account.GetProperty("id").GetGuid();
+        var transferResponse = await owner.PostAsJsonAsync("/api/finance/transfers", new { requestId = Guid.NewGuid(), sourceAccountId = identity.UserId,
+            targetAccountId = accountId, amount = "25.00", description = "На карту" }); transferResponse.EnsureSuccessStatusCode();
+        var transfer = await Json(transferResponse);
+        var cancelPath = $"/api/finance/transfers/{transfer.GetProperty("id").GetGuid()}/cancel";
+        for (var i = 0; i < 2; i++) (await owner.PostAsJsonAsync(cancelPath, new { version = transfer.GetProperty("version").GetGuid() })).EnsureSuccessStatusCode();
+        var today = Finance.Application.Transactions.MoscowDate.FromUtc(DateTimeOffset.UtcNow);
+        var month = new DateOnly(today.Year, today.Month, 1);
+        (await owner.PostAsJsonAsync("/api/finance/budgets", new { categoryId, month, limit = "5.00" })).EnsureSuccessStatusCode();
+        var expenseResponse = await owner.PostAsJsonAsync("/api/finance/transactions", new { requestId = Guid.NewGuid(), accountId, categoryId,
+            type = "Expense", amount = "10.00", description = "Чипсы" }); expenseResponse.EnsureSuccessStatusCode();
+        var expense = await Json(expenseResponse);
+        var dashboard = await Json(await owner.GetAsync($"/api/finance/dashboard?from={month:yyyy-MM-dd}&to={today:yyyy-MM-dd}"));
+        Assert.Equal("10.00", dashboard.GetProperty("expense").GetString());
+        Assert.Equal("0.00", dashboard.GetProperty("income").GetString());
+        var budgets = await Json(await owner.GetAsync($"/api/finance/budgets?month={month:yyyy-MM-dd}"));
+        Assert.Equal("10.00", budgets[0].GetProperty("spent").GetString());
+        Assert.Equal("5.00", budgets[0].GetProperty("overspent").GetString());
+        var accounts = await Json(await owner.GetAsync("/api/finance/accounts"));
+        Assert.Equal("90.00", accounts.EnumerateArray().Single(x => x.GetProperty("id").GetGuid() == accountId).GetProperty("balance").GetString());
+        (await owner.DeleteAsync($"/api/finance/transactions/{expense.GetProperty("id").GetGuid()}?version={expense.GetProperty("version").GetGuid()}")).EnsureSuccessStatusCode();
+        Assert.Equal("0.00", (await Json(await owner.GetAsync($"/api/finance/dashboard?from={month:yyyy-MM-dd}&to={today:yyyy-MM-dd}"))).GetProperty("expense").GetString());
+        using var scope = app.Services.CreateScope();
+        Assert.False(await scope.ServiceProvider.GetRequiredService<FinanceDbContext>().FinancialRecords.AnyAsync(x => x.UserId == identity.UserId && x.Kind == FinancialRecordKind.DailyTotal));
+    }
+    [Fact]
+    public async Task RecordCsvImportIsAtomicDeduplicatedAndAccumulatesOneDailyBucket()
+    {
+        using var app = ManagedApp().WithWebHostBuilder(b => b.UseSetting("FinanceRecords:Enabled", "true"));
+        using var owner = ManagedClient(app);
+        var identity = await RegisterManaged(owner);
+        var categoryId = await Category(owner);
+        var categories = await Json(await owner.GetAsync("/api/categories?includeInactive=true"));
+        var categoryName = categories.EnumerateArray().Single(x => x.GetProperty("id").GetString() == categoryId).GetProperty("name").GetString();
+        (await owner.PostAsync("/api/private-finance/key/start", null)).EnsureSuccessStatusCode();
+        (await owner.PostAsJsonAsync("/api/finance/migrate", new { expectedRevision = 1 })).EnsureSuccessStatusCode();
+        object Csv(string amount) => new { content = $"date;amount;category\n2026-10-29;10.00;{categoryName}\n2026-10-29;{amount};{categoryName}",
+            delimiter = ";", accountId = identity.UserId, mapping = new { date = 0, amount = 1, category = 2, description = (int?)null, type = (int?)null }, defaultType = "Expense" };
+        Assert.Equal(HttpStatusCode.BadRequest, (await owner.PostAsJsonAsync("/api/finance/imports/csv/apply", Csv("invalid"))).StatusCode);
+        Assert.Equal(0, (await Json(await owner.GetAsync("/api/finance/transactions"))).GetProperty("totalCount").GetInt32());
+        var preview = await Json(await owner.PostAsJsonAsync("/api/finance/imports/csv/preview", Csv("20.00")));
+        Assert.True(preview.GetProperty("canApply").GetBoolean());
+        var result = await owner.PostAsJsonAsync("/api/finance/imports/csv/apply", Csv("20.00")); result.EnsureSuccessStatusCode();
+        Assert.Equal(2, (await Json(result)).GetProperty("count").GetInt32());
+        Assert.Equal(HttpStatusCode.Conflict, (await owner.PostAsJsonAsync("/api/finance/imports/csv/apply", Csv("20.00"))).StatusCode);
+        var totals = await Json(await owner.GetAsync("/api/finance/dashboard?from=2026-10-01&to=2026-10-31"));
+        Assert.Equal("30.00", totals.GetProperty("expense").GetString());
+        var accounts = await Json(await owner.GetAsync("/api/finance/accounts"));
+        Assert.Equal("-30.00", accounts[0].GetProperty("balance").GetString());
+        using var scope = app.Services.CreateScope();
+        Assert.Single(await scope.ServiceProvider.GetRequiredService<FinanceDbContext>().FinancialRecords.Where(x => x.UserId == identity.UserId && x.Kind == FinancialRecordKind.DailyTotal).ToListAsync());
+    }
 }
