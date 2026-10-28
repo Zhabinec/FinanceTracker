@@ -1,10 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { lazy, useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { preventRepeatedPaste } from './shared/pasteShortcut'
-import { LoginPage } from './features/auth/LoginPage'
-import { PasswordRecoveryPage } from './features/auth/PasswordRecoveryPage'
-import { EmailVerificationPage } from './features/auth/EmailVerificationPage'
-import { RegisterPage } from './features/auth/RegisterPage'
+import { StartupScreen } from './shared/StartupScreen'
 import { useAuth } from './features/auth/useAuth'
 import './App.css'
 import './motion.css'
@@ -16,6 +13,10 @@ import { AuthLayout } from './features/auth/AuthLayout'
 import { TelegramEntry } from './features/auth/TelegramEntry'
 
 const AccountPage = lazy(() => import('./features/auth/AccountPage').then(module => ({ default: module.AccountPage })))
+const LoginPage = lazy(() => import('./features/auth/LoginPage').then(module => ({ default: module.LoginPage })))
+const RegisterPage = lazy(() => import('./features/auth/RegisterPage').then(module => ({ default: module.RegisterPage })))
+const PasswordRecoveryPage = lazy(() => import('./features/auth/PasswordRecoveryPage').then(module => ({ default: module.PasswordRecoveryPage })))
+const EmailVerificationPage = lazy(() => import('./features/auth/EmailVerificationPage').then(module => ({ default: module.EmailVerificationPage })))
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then(module => ({ default: module.AccountsPage })))
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })))
 const CategoriesPage = lazy(() => import('./features/categories/CategoriesPage').then(module => ({ default: module.CategoriesPage })))
@@ -24,7 +25,7 @@ const TransactionsPage = lazy(() => import('./features/transactions/Transactions
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { status, user } = useAuth()
 
-  if (status === 'loading') return <div className="app-loader">Восстанавливаем сессию…</div>
+  if (status === 'loading') return <StartupScreen />
   if (status === 'anonymous') return <Navigate to="/login" replace />
   return <PrivateFinanceGate key={user?.id}>{children}</PrivateFinanceGate>
 }
@@ -47,7 +48,7 @@ export default function App() {
     return <Navigate to="/login" replace />
 
   return (
-    <Routes>
+    <Suspense fallback={<StartupScreen />}><Routes>
       <Route path="/login" element={status === 'authenticated' ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/login/password" element={status === 'authenticated' ? <Navigate to="/" replace /> : <LoginPage password />} />
       <Route path="/register" element={status === 'authenticated' ? <Navigate to="/" replace /> : <RegisterPage />} />
@@ -63,6 +64,6 @@ export default function App() {
         <Route path="/transactions" element={<TransactionsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    </Routes></Suspense>
   )
 }

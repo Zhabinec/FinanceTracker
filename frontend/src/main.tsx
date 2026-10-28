@@ -8,11 +8,14 @@ import './index.css'
 import App from './App'
 import { initializeTelegram } from './platform/telegram'
 import { RuntimeOptionsProvider } from './features/auth/RuntimeOptionsProvider'
+import { loadRuntimePolicy } from './features/auth/runtimePolicy'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
 })
 
+// Start waking the API while the Telegram SDK loads instead of waiting for it.
+void loadRuntimePolicy().catch(() => undefined)
 await initializeTelegram()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

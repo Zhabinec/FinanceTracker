@@ -36,12 +36,12 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
     const effectEpoch = ++lifecycle.current
     let active = true
     lockVault()
-    http.get<{ vault: VaultEnvelope | null }>('/private-finance').then(async ({ data }) => {
+    const vaultRequest = http.get<{ vault: VaultEnvelope | null }>('/private-finance')
+    const keyRequest = managedAvailable ? http.get<{ code: string | null }>('/private-finance/key') : Promise.resolve(null)
+    Promise.all([vaultRequest, keyRequest]).then(async ([{ data }, access]) => {
       if (!active) return
       if (managedAvailable && data.vault) {
-        const access = await http.get<{ code: string | null }>('/private-finance/key')
-        if (!active) return
-        if (access.data.code) {
+        if (access?.data.code) {
           const key = await keyFromCode(access.data.code)
           const document = await decryptDocument(data.vault, key, userId)
           if (!active) return

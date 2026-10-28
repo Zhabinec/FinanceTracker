@@ -26,8 +26,12 @@ public sealed partial class FinanceApiTests
         var id = Random.Shared.NextInt64(1, 900_000_000_000_000);
         var response = await client.PostAsJsonAsync("/api/auth/telegram/register", new { initData = TelegramTestData.Sign(id) });
         response.EnsureSuccessStatusCode();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", (await Json(response)).GetProperty("accessToken").GetString());
-        return ((await Json(await client.GetAsync("/api/users/me"))).GetProperty("id").GetGuid(), id);
+        var payload = await Json(response);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", payload.GetProperty("accessToken").GetString());
+        var owner = (await Json(await client.GetAsync("/api/users/me"))).GetProperty("id").GetGuid();
+        Assert.Equal(owner, payload.GetProperty("user").GetProperty("id").GetGuid());
+        Assert.Equal(4, payload.GetProperty("user").EnumerateObject().Count());
+        return (owner, id);
     }
     [Fact]
     public async Task ManagedBootstrapIsAtomicIdempotentAndSurvivesANewTelegramSession()
@@ -68,6 +72,7 @@ public sealed partial class FinanceApiTests
         using var device = ManagedClient(app);
         var login = await Json(await device.PostAsJsonAsync("/api/auth/telegram/login", new { initData = TelegramTestData.Sign(identity.TelegramId) }));
         device.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.GetProperty("session").GetProperty("accessToken").GetString());
+        Assert.Equal(identity.UserId, login.GetProperty("session").GetProperty("user").GetProperty("id").GetGuid());
         Assert.Equal(code, (await Json(await device.GetAsync("/api/private-finance/key"))).GetProperty("code").GetString());
     }
     [Fact]
