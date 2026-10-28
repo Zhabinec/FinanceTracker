@@ -88,10 +88,10 @@ button:disabled { opacity:.6; cursor:wait; }
 .transaction-main strong,.transaction-main span { display:block; }
 .transaction-main div span { overflow:hidden; margin-top:3px; color:var(--muted); font-size:13px; text-overflow:ellipsis; white-space:nowrap; }
 .transaction-main time { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; }
-.transaction-sign { flex:0 0 auto; width:38px; height:38px; display:grid; place-items:center; border-radius:12px; font-size:20px; font-weight:700; }
+.transaction-main > .transaction-sign { flex:0 0 38px; width:38px; height:38px; display:grid; place-items:center; border-radius:12px; line-height:1; }
 .transaction-sign.income { color:#24724f; background:#e2f2e8; }
 .transaction-sign.expense { color:#a94f3d; background:#f8e8e3; }
-.transaction-amount { white-space:nowrap; }
+.transaction-amount { white-space:nowrap; font-variant-numeric:tabular-nums; }
 .transaction-amount.income { color:#24724f; }
 .transaction-amount.expense { color:#a94f3d; }
 .transaction-row-error { grid-column:1/-1; margin:0; }
