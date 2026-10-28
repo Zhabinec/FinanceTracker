@@ -53,6 +53,9 @@ services:
     buildCommand: npm ci --prefix frontend && npm run build --prefix frontend
     staticPublishPath: frontend/dist
     autoDeployTrigger: checksPass
+    envVars:
+      - key: VITE_LEGACY_APP_ORIGIN
+        value: https://finance-tracker-zhabinec.onrender.com
     routes:
       - type: rewrite
         source: /api/*
