@@ -22,7 +22,7 @@ export function AuthLayout({ title, subtitle, alternateText, alternateLink,
           <h2>{title}</h2>
           <p className="form-subtitle">{subtitle}</p>
           {children}
-          <p className="alternate">{alternateText} <Link to={alternateLink}>{alternateLabel}</Link></p>
+          {alternateLabel && <p className="alternate">{alternateText} <Link to={alternateLink}>{alternateLabel}</Link></p>}
         </div>
       </section>
     </main>

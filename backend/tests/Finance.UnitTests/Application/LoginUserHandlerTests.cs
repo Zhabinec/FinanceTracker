@@ -20,7 +20,7 @@ public sealed class LoginUserHandlerTests
         var handler = new LoginUserHandler(new FakeUserLoginStore(user), new FakePasswordHasher(),
             new FakeAccessTokenProvider(), new FakeRefreshSessionStore(), new FakeRefreshTokenProtector(),
             new FakeClock(), new RefreshTokenSettings(30));
-        var result = await handler.HandleAsync(new LoginUserCommand(user.Email, "correct-password"), CancellationToken.None);
+        var result = await handler.HandleAsync(new LoginUserCommand(user.Email!, "correct-password"), CancellationToken.None);
         Assert.Equal(LoginUserStatus.EmailNotConfirmed, result.Status);
         Assert.Null(result.AccessToken);
         Assert.Null(result.RefreshToken);

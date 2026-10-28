@@ -10,8 +10,8 @@ public sealed class User
 
     private User(
         Guid id,
-        string email,
-        string normalizedEmail,
+        string? email,
+        string? normalizedEmail,
         string passwordHash,
         DateTimeOffset registeredAtUtc,
         string baseCurrency)
@@ -26,9 +26,9 @@ public sealed class User
 
     public Guid Id { get; private set; }
 
-    public string Email { get; private set; } = string.Empty;
+    public string? Email { get; private set; }
 
-    public string NormalizedEmail { get; private set; } = string.Empty;
+    public string? NormalizedEmail { get; private set; }
 
     public string PasswordHash { get; private set; } = string.Empty;
     public Guid SecurityStamp { get; private set; } = Guid.NewGuid();
@@ -51,6 +51,14 @@ public sealed class User
     public DateTimeOffset RegisteredAtUtc { get; private set; }
 
     public string BaseCurrency { get; private set; } = string.Empty;
+
+    public static User CreateTelegram(string randomPasswordHash, DateTimeOffset registeredAtUtc)
+    {
+        EnsureUtc(registeredAtUtc, nameof(registeredAtUtc));
+        if (string.IsNullOrWhiteSpace(randomPasswordHash) || randomPasswordHash.Length > 500)
+            throw new DomainException("A valid password hash is required.");
+        return new User(Guid.NewGuid(), null, null, randomPasswordHash, registeredAtUtc, "RUB");
+    }
 
     public static User Create(
         string email,

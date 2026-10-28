@@ -50,6 +50,7 @@ public sealed class ApiFixture : IAsyncLifetime
             builder.UseSetting("Http:ApiPermitLimit", "10000");
             builder.UseSetting("Telegram:BotToken", TelegramTestData.BotToken);
             builder.UseSetting("Telegram:BotUsername", "test_finance_bot");
+            builder.UseSetting("Telegram:AuthPermitLimit", "1000");
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IRecoveryEmailSender>();

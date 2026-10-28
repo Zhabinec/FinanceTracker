@@ -7,7 +7,7 @@ import { useAuth } from './useAuth'
 
 export function TelegramLinkPanel() {
   const client = useQueryClient()
-  const { signOut } = useAuth()
+  const { signOut, user } = useAuth()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const link = useQuery({ queryKey: ['telegram-link'], queryFn: async () =>
@@ -27,7 +27,9 @@ export function TelegramLinkPanel() {
   return <section className="transactions-list-card"><h2>Telegram</h2>
     {link.isError ? <><p role="alert">Не удалось проверить привязку.</p><button className="ghost-button" onClick={() => void link.refetch()}>Повторить</button></>
       : link.isPending ? <p role="status">Загружаем…</p>
-      : link.data.linked ? <><p>Аккаунт подключён.</p><button className="ghost-button" disabled={busy} onClick={() => void unlink()}>Отключить Telegram</button></>
+      : link.data.linked ? <><p>Аккаунт подключён.</p>{user?.email
+        ? <button className="ghost-button" disabled={busy} onClick={() => void unlink()}>Отключить Telegram</button>
+        : <p className="muted">Telegram — ваш способ входа в этот аккаунт.</p>}</>
       : <a className="ghost-button link-button" href={`https://t.me/${encodeURIComponent(options.data?.botUsername ?? '')}`} target="_blank" rel="noreferrer">Открыть бота</a>}
     {error && <p className="notice error" role="alert">{error}</p>}
   </section>

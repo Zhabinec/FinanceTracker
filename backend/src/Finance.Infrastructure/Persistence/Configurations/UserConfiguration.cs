@@ -14,11 +14,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.Email)
             .HasMaxLength(320)
-            .IsRequired();
+            .IsRequired(false);
 
         builder.Property(user => user.NormalizedEmail)
             .HasMaxLength(320)
-            .IsRequired();
+            .IsRequired(false);
+        builder.ToTable(table => table.HasCheckConstraint("ck_user_email_pair",
+            "(\"Email\" IS NULL AND \"NormalizedEmail\" IS NULL) OR (\"Email\" IS NOT NULL AND \"NormalizedEmail\" IS NOT NULL)"));
 
         builder.HasIndex(user => user.NormalizedEmail)
             .IsUnique();

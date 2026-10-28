@@ -20,6 +20,7 @@ public sealed record TelegramTokens(string AccessToken, DateTimeOffset ExpiresAt
 public sealed record TelegramLinkStatus(bool Linked, Guid? Version);
 public interface ITelegramAuthStore
 {
+    Task<TelegramSessionOwner> RegisterAndOpenAsync(long telegramUserId, string randomPasswordHash, string tokenHash, DateTimeOffset now, DateTimeOffset expires, CancellationToken cancellationToken);
     Task<TelegramSessionOwner?> OpenAsync(long telegramUserId, string tokenHash, DateTimeOffset now, DateTimeOffset expires, CancellationToken cancellationToken);
     Task<TelegramSessionOwner> BindAndOpenAsync(Guid userId, Guid securityStamp, long telegramUserId, string tokenHash, DateTimeOffset now, DateTimeOffset expires, CancellationToken cancellationToken);
     Task<TelegramSessionOwner?> RotateAsync(string tokenHash, string newTokenHash, DateTimeOffset now, DateTimeOffset expires, CancellationToken cancellationToken);
@@ -33,6 +34,15 @@ public sealed class TelegramAuthHandler(ITelegramInitDataVerifier verifier, ITel
     IUserLoginStore users, IPasswordHasher passwords, IRefreshTokenProtector tokens,
     ITelegramAccessTokenProvider accessTokens, IClock clock, RefreshTokenSettings refreshSettings)
 {
+    public async Task<TelegramTokens> RegisterAsync(string? initData, CancellationToken ct)
+    {
+        var proof = Verify(initData);
+        var refresh = tokens.Generate();
+        var now = clock.UtcNow;
+        var owner = await store.RegisterAndOpenAsync(proof.UserId, passwords.Hash(tokens.Generate()), tokens.Hash(refresh),
+            now, now.AddDays(refreshSettings.LifetimeDays), ct);
+        return Issue(owner, refresh);
+    }
     public async Task<TelegramTokens?> LoginAsync(string? initData, CancellationToken cancellationToken)
     {
         var proof = Verify(initData);

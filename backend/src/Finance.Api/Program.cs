@@ -131,7 +131,9 @@ builder.Services.AddRateLimiter(options =>
             { PermitLimit = builder.Configuration.GetValue("Http:ApiConcurrencyLimit", 8), QueueLimit = 0 })
             : RateLimitPartition.GetNoLimiter("static")),
         PartitionedRateLimiter.Create<HttpContext, string>(context =>
-            HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Value?.TrimEnd('/').Equals("/api/auth/register", StringComparison.OrdinalIgnoreCase) == true
+            HttpMethods.IsPost(context.Request.Method) &&
+                (context.Request.Path.Value?.TrimEnd('/').Equals("/api/auth/register", StringComparison.OrdinalIgnoreCase) == true ||
+                 context.Request.Path.Value?.TrimEnd('/').Equals("/api/auth/telegram/register", StringComparison.OrdinalIgnoreCase) == true)
             ? RateLimitPartition.GetFixedWindowLimiter("registration", _ => new FixedWindowRateLimiterOptions
             { PermitLimit = builder.Configuration.GetValue("Auth:RegistrationPermitLimit", 20), Window = TimeSpan.FromMinutes(15), QueueLimit = 0 })
             : RateLimitPartition.GetNoLimiter("other")));
@@ -156,7 +158,7 @@ builder.Services.AddRateLimiter(options =>
         { PermitLimit = builder.Configuration.GetValue("Auth:RecoveryPermitLimit", 10), Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
     options.AddPolicy("telegram-auth", context => RateLimitPartition.GetFixedWindowLimiter(
         $"{context.Request.Path}:{context.Connection.RemoteIpAddress}", _ => new FixedWindowRateLimiterOptions
-        { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+        { PermitLimit = builder.Configuration.GetValue("Telegram:AuthPermitLimit", 30), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.AddPolicy("password-login", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
         { PermitLimit = builder.Configuration.GetValue("Auth:LoginPermitLimit", 15), Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
@@ -203,9 +205,9 @@ builder.Services
                 if (!Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var userId)) { context.Fail("Invalid subject."); return; }
                 var store = context.HttpContext.RequestServices.GetRequiredService<IUserProfileStore>();
                 var user = await store.FindByIdAsync(userId, context.HttpContext.RequestAborted);
-                if (user is null || user.EmailConfirmedAtUtc is null || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
-                { context.Fail("Session is no longer valid."); return; }
                 var telegramVersion = context.Principal?.FindFirst("telegram_link")?.Value;
+                if (user is null || (user.EmailConfirmedAtUtc is null && (user.Email is not null || telegramVersion is null)) || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
+                { context.Fail("Session is no longer valid."); return; }
                 if (telegramVersion is not null)
                 {
                     var links = context.HttpContext.RequestServices.GetRequiredService<ITelegramAuthStore>();
