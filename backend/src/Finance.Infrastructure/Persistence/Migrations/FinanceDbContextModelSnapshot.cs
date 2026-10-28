@@ -201,6 +201,81 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("categories", (string)null);
                 });
 
+            modelBuilder.Entity("Finance.Domain.Ledger.FinancialRecord", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("Ciphertext")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("Nonce")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateOnly?>("OccurredOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId", "Kind", "Id");
+
+                    b.HasIndex("UserId", "Kind", "AccountId", "OccurredOn");
+
+                    b.HasIndex("UserId", "Kind", "CategoryId", "OccurredOn");
+
+                    b.HasIndex("UserId", "Kind", "OccurredOn", "CreatedAtUtc", "Id");
+
+                    b.ToTable("financial_records", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_financial_record_envelope", "octet_length(\"Nonce\") = 12 AND octet_length(\"Ciphertext\") BETWEEN 17 AND 16384");
+
+                            t.HasCheckConstraint("ck_financial_record_kind", "\"Kind\" BETWEEN 1 AND 8");
+                        });
+                });
+
+            modelBuilder.Entity("Finance.Domain.Ledger.FinancialWorkspace", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("BaseCurrency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)");
+
+                    b.Property<DateTimeOffset>("MigratedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("SourceRevision")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("VaultId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId");
+
+                    b.ToTable("financial_workspaces", (string)null);
+                });
+
             modelBuilder.Entity("Finance.Domain.Transactions.ImportBatch", b =>
                 {
                     b.Property<Guid>("Id")
@@ -619,6 +694,24 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Ledger.FinancialRecord", b =>
+                {
+                    b.HasOne("Finance.Domain.Ledger.FinancialWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Ledger.FinancialWorkspace", b =>
+                {
+                    b.HasOne("Finance.Domain.Users.User", null)
+                        .WithOne()
+                        .HasForeignKey("Finance.Domain.Ledger.FinancialWorkspace", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

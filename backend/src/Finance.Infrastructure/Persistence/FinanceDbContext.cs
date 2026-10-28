@@ -8,6 +8,8 @@ namespace Finance.Infrastructure.Persistence;
 public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     : DbContext(options)
 {
+    public DbSet<Finance.Domain.Ledger.FinancialRecord> FinancialRecords => Set<Finance.Domain.Ledger.FinancialRecord>();
+    public DbSet<Finance.Domain.Ledger.FinancialWorkspace> FinancialWorkspaces => Set<Finance.Domain.Ledger.FinancialWorkspace>();
     public DbSet<User> Users => Set<User>();
     public DbSet<ManagedFinancialKey> ManagedFinancialKeys => Set<ManagedFinancialKey>();
     public DbSet<GoogleAccountLink> GoogleAccountLinks => Set<GoogleAccountLink>();
