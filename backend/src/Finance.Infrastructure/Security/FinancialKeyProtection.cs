@@ -119,7 +119,10 @@ public sealed class FinancialKeyProtection
             using var aes = new AesGcm(key, 16);
             aes.Decrypt(Convert.FromBase64String(vault.Nonce), encrypted.AsSpan(0, plain.Length), encrypted.AsSpan(plain.Length), plain,
                 Encoding.UTF8.GetBytes($"FinanceTracker:private:v1:{vault.UserId}:{vault.Id}:{vault.Revision}"));
-            return JsonDocument.Parse(plain);
+            // Parse(ReadOnlyMemory<byte>) retains its input. A stream gives JsonDocument its own
+            // buffer so wiping the decrypted byte array in finally cannot corrupt the returned JSON.
+            using var stream = new MemoryStream(plain, writable: false);
+            return JsonDocument.Parse(stream);
         }
         finally { CryptographicOperations.ZeroMemory(key); CryptographicOperations.ZeroMemory(plain); }
     }

@@ -12,6 +12,17 @@ public sealed class FinancialRecordProtectionTests
     private static FinancialRecord Row(Guid owner) => FinancialRecord.Create(owner, FinancialRecordKind.Transaction,
         Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow, new(2026, 10, 29), Guid.NewGuid(), Guid.NewGuid());
     [Fact]
+    public void MigrationDocumentOwnsItsBufferAfterTheTemporaryPlaintextIsWiped()
+    {
+        var owner = Guid.NewGuid(); var vaultId = Guid.NewGuid(); var code = FinancialKeyProtection.GenerateCode();
+        var encrypted = FinancialKeyProtection.EncryptDocument("{\"format\":1,\"description\":\"Чипсы\"}", code, owner, vaultId);
+        var vault = Finance.Domain.Users.PrivateFinancialVault.Stage(owner, vaultId, Guid.NewGuid(), encrypted.Nonce,
+            encrypted.Ciphertext, new string('A', 64), DateTimeOffset.UtcNow);
+        using var document = FinancialKeyProtection.DecryptDocument(code, vault);
+        Assert.Equal(1, document.RootElement.GetProperty("format").GetInt32());
+        Assert.Equal("Чипсы", document.RootElement.GetProperty("description").GetString());
+    }
+    [Fact]
     public void PayloadIsEncryptedWithIndependentNoncesAndExactMoney()
     {
         var owner = Guid.NewGuid(); using var protection = new FinancialRecordProtection(owner, FinancialKeyProtection.GenerateCode());
