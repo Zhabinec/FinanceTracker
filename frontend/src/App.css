@@ -17,6 +17,7 @@ input, select { width:100%; border:1px solid var(--line); border-radius:12px; pa
 input:focus, select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(29,90,66,.1); }
 .primary-button { border:0; border-radius:12px; padding:14px 18px; margin-top:18px; background:var(--green); color:white; font-weight:700; cursor:pointer; transition:background-color .18s; }
 .primary-button:hover { background:#154a35; }
+.form-card .telegram-entry { display:flex; justify-content:center; text-decoration:none; margin-bottom:12px; color:white; }
 button:disabled { opacity:.6; cursor:wait; }
 .field-error { color:#a43737; font-size:13px; }
 .notice { padding:12px 14px; border-radius:10px; margin-bottom:12px; font-size:14px; }

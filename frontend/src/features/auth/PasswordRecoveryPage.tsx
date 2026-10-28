@@ -44,7 +44,7 @@ export function PasswordRecoveryPage({ reset = false }: { reset?: boolean }) {
 
   return <AuthLayout title={reset ? 'Новый пароль' : 'Восстановление доступа'}
     subtitle={reset ? 'Задайте новый пароль для аккаунта.' : 'Отправим ссылку на ваш email.'}
-    alternateText="Вернуться ко входу" alternateLink="/login" alternateLabel="Войти">
+    alternateText="Вернуться ко входу" alternateLink="/login/password" alternateLabel="Войти">
     {error && <div className="notice error" role="alert">{error}{reset && linkProblem && <p>Ссылка могла истечь или уже использоваться. <Link to="/forgot-password">Запросить новую ссылку</Link></p>}</div>}
     {done ? <div className="notice success" role="status">{reset ? 'Пароль изменён. Войдите с новым паролем.' : 'Если аккаунт существует, письмо с инструкцией будет отправлено.'}</div> :
       <form onSubmit={submit}>

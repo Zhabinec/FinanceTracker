@@ -26,7 +26,7 @@ export function EmailVerificationPage({ confirm = false }: { confirm?: boolean }
 
   return <AuthLayout title={confirm ? 'Подтверждение email' : 'Проверьте почту'}
     subtitle={confirm ? 'Подтвердите адрес, чтобы войти в аккаунт.' : 'Для входа нужно подтвердить, что email принадлежит вам.'}
-    alternateText="Уже подтвердили адрес?" alternateLink="/login" alternateLabel="Войти">
+    alternateText="Уже подтвердили адрес?" alternateLink="/login/password" alternateLabel="Войти">
     {registered && <p className="notice success">Аккаунт создан для {email}. Откройте письмо и подтвердите email.</p>}
     {error && <div className="notice error" role="alert">{error} <Link to="/verify-email">Запросить новое письмо</Link></div>}
     {done ? <p className="notice success" role="status">{confirm ? 'Email подтверждён. Теперь можно войти.' : 'Если аккаунт существует и email ещё не подтверждён, письмо будет отправлено.'}</p> :

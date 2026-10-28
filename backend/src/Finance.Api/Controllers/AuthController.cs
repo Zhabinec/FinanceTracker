@@ -17,8 +17,16 @@ public sealed class AuthController(
     LoginUserHandler loginUserHandler,
     RefreshTokensHandler refreshTokensHandler,
     LogoutHandler logoutHandler,
-    RefreshCookieService refreshCookieService) : ControllerBase
+    RefreshCookieService refreshCookieService,
+    IConfiguration configuration,
+    Finance.Infrastructure.Security.RecoveryEmailOptions emailOptions) : ControllerBase
 {
+    private bool EmailRegistrationEnabled => configuration.GetValue("Auth:EmailRegistrationEnabled",
+        emailOptions.Provider == "Mailpit");
+
+    [HttpGet("options")]
+    public IActionResult Options() => Ok(new { emailRegistrationEnabled = EmailRegistrationEnabled });
+
     [HttpPost("register")]
     [EnableRateLimiting("password-recovery")]
     [ProducesResponseType<RegisteredUserDto>(StatusCodes.Status201Created)]
@@ -28,6 +36,13 @@ public sealed class AuthController(
         RegisterUserRequest request,
         CancellationToken cancellationToken)
     {
+        if (!EmailRegistrationEnabled)
+            return StatusCode(StatusCodes.Status403Forbidden, new ProblemDetails
+            {
+                Status = StatusCodes.Status403Forbidden,
+                Title = "Регистрация по email отключена. Используйте Telegram или Google."
+            });
+
         var command = new RegisterUserCommand(
             request.Email,
             request.Password,

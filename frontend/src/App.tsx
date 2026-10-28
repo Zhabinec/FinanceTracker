@@ -35,6 +35,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={status === 'authenticated' ? <Navigate to="/" replace /> : <LoginPage />} />
+      <Route path="/login/password" element={status === 'authenticated' ? <Navigate to="/" replace /> : <LoginPage password />} />
       <Route path="/register" element={status === 'authenticated' ? <Navigate to="/" replace /> : <RegisterPage />} />
       <Route path="/forgot-password" element={<PasswordRecoveryPage key="forgot" />} />
       <Route path="/reset-password" element={<PasswordRecoveryPage key={location.key} reset />} />
