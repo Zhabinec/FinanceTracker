@@ -1,128 +1,111 @@
-# Бесплатный тестовый контур Render + Neon
+# Render + Neon
 
-Статус на 27.10.2026: опубликован тестовый контур
-https://finance-tracker-zhabinec.onrender.com на Render Free + Neon Free.
-Первый успешный деплой — `bf3fe18` из `codex/platform-telegram`.
-HTTPS, `/health` с проверкой БД и публичные настройки Telegram проверены.
-Приватный API без входа возвращает 401; неизвестные API и assets — 404;
-SPA-маршруты открываются с `Cache-Control: no-cache` и разрешённым Telegram framing.
+## Текущий контур
 
-Почта Resend настроена в тестовом режиме (`onboarding@resend.dev`, отдельный
-ключ с правом Sending access). Пока письма разрешены только на email владельца
-аккаунта Resend. Для регистрации других пользователей нужен подтверждённый
-домен отправителя; публичная регистрация для любых email ещё не готова.
-Владелец подтвердил реальную доставку письма и успешный вход. Полный сценарий
-работы с записями и синхронизацию устройств ещё нужно проверить вручную;
-они не считаются проверенными одним успешным health-check.
+| Компонент | Настройка |
+|---|---|
+| Приложение | https://finance-tracker-zhabinec.onrender.com/ |
+| Telegram | https://t.me/PetProjectFinanceBot → Открыть |
+| Frontend и API | Один Render Web Service finance-tracker-zhabinec |
+| Dockerfile | deploy/render.Dockerfile |
+| Ветка публикации | codex/platform-telegram |
+| База | Neon, direct PostgreSQL endpoint |
+| Регион | Frankfurt для приложения и БД |
+| Обновления | Ручной деплой после CI |
+| Вход | Telegram и Google; email-регистрация выключена |
+| Почта | Resend с тестовым отправителем, только email владельца |
 
-В PetProjectFinanceBot настроена кнопка меню «Открыть» на тот же HTTPS URL.
-Отдельная профильная кнопка Main Mini App в BotFather ещё не настроена.
-Локальный `test@test.ru` и локальная история в облачную БД не переносились.
+Используются планы Free. Доступность, лимиты и условия проверяйте в панелях провайдеров. После простоя Render может запускаться с задержкой; это тестовое размещение без гарантии постоянной доступности.
 
-Клиентское приватное хранилище реализовано в формате 1; его поток и ограничения
-описаны в `decisions/private-financial-vault.md`. Старые записи остаются открытыми
-до явного переноса через UI. Локальные пользовательские данные в Neon
-не переносить автоматически.
+Локальные и облачные базы независимы. Аккаунты и данные между ними автоматически не переносятся.
 
-## Схема размещения
+## Схема
 
-Один бесплатный Web Service Render собирается из `deploy/render.Dockerfile`:
-React → wwwroot → ASP.NET Core, вместе с существующим API. PostgreSQL — отдельный
-проект Neon на Free. Регион обоих сервисов — Frankfurt. Neon ограничен 0.25 CU
-с автоостановкой после 5 минут простоя; платные сервисы не подключались.
-`render.yaml` фиксирует бесплатный план и обновление после CI для Blueprint.
-Текущий сервис создан через Public Git Repository, без выдачи Render доступа
-к GitHub-аккаунту. Для такого подключения Render отключает Auto-Deploy:
-после успешного CI обновление запускается вручную (порядок ниже).
-Новые production-библиотеки не нужны. Раздельные сайты для frontend/API не выбраны,
-чтобы сохранить один origin, существующие cookies и относительные `/api` URL.
+deploy/render.Dockerfile собирает React в wwwroot ASP.NET Core API. Контейнер слушает 8080, frontend и API имеют общий origin. PostgreSQL расположен в Neon. HTTPS завершается на Render; refresh cookies имеют Secure.
 
-HTTPS заканчивается на Render, внутренний порт контейнера — 8080. Secure cookies
-включены. Встраивание разрешено для Telegram, индекс SPA не кешируется, хешированные
-assets кешируются. Неизвестные API и отсутствующие файлы возвращают 404, не HTML.
-Публичный URL для писем берётся из `RENDER_EXTERNAL_URL`, не из заголовка Host.
+Hosting__ServeFrontend=true установлен Dockerfile. Hosting__UseRenderExternalUrl=true берёт публичный URL из RENDER_EXTERNAL_URL. SPA index имеет no-cache, хешированные assets кешируются; отсутствующие API и файлы возвращают 404.
 
-Сервер и БД выбираются в одном регионе (предложен Frankfurt). Часовой пояс
-бизнес-дат по-прежнему Europe/Moscow (UTC+3) независимо от региона сервера.
+## Создание окружения
 
-## Дальнейшая настройка аккаунтов
+1. Создайте отдельный PostgreSQL-проект Neon в регионе рядом с Render.
+2. Создайте Docker Web Service Render из репозитория: контекст — корень, Dockerfile — deploy/render.Dockerfile.
+3. Выберите codex/platform-telegram, health /health, внутренний порт 8080.
+4. Заполните Environment ниже.
+5. Запустите deploy, дождитесь Live и проверьте SHA.
+6. Подключите URL к кнопке Telegram и пройдите реальный вход.
 
-Ниже сохранена инструкция воспроизведения конфигурации. Для текущего тестового
-контура шаги создания сервисов и внесения секретов уже выполнены;
-подтверждение домена отправителя остаётся отдельным этапом.
+render.yaml описывает Blueprint с free и autoDeployTrigger=checksPass. Текущий сервис подключён как Public Git Repository и обновляется вручную; файл Blueprint сам его настройки не меняет.
 
-1. В Neon создать проект FinanceTracker с PostgreSQL, без дополнительных сервисов.
-   Оставить Free; регион согласовать с Render. Пустая облачная БД отделена от локальной.
-2. Подключить публичный репозиторий Zhabinec/FinanceTracker и ветку
-   `codex/platform-telegram` в Render. Использовать Blueprint `render.yaml`
-   либо Web Service с Dockerfile `deploy/render.Dockerfile`, root context `.`,
-   Free, health `/health`, порт 8080. Бесплатную временную БД Render не создавать.
-3. В секретах Render задать `ConnectionStrings__Database` в формате Npgsql:
-   `Host=NEON_DIRECT_HOST;Port=5432;Database=NEON_DATABASE;Username=NEON_USER;Password=NEON_PASSWORD;SSL Mode=VerifyFull;Maximum Pool Size=10;Timeout=30;Multiplexing=false`.
-   Нужен direct endpoint, не hostname с `-pooler`: финансовый перенос и закрытие
-   legacy API используют PostgreSQL session advisory locks, несовместимые с
-   transaction pooling. Запуск с Neon pooler или Multiplexing отклоняется.
-   Скопированная PostgreSQL URI не является Npgsql connection string.
-   Реальные значения не вставлять в Git, логи или чат.
-4. Задать `Telegram__BotToken` из собственного бота; username — PetProjectFinanceBot.
-   Новый JWT-ключ генерируется Render отдельно от локального. Не заменять его на
-   каждом рестарте: иначе все пользователи теряют сессии.
-5. Настроить настоящую доставку писем через поддерживаемый Resend:
-   `Email__From` и `Email__ApiKey`. Для отправки произвольным пользователям нужен
-   подтверждённый домен отправителя. Без этого публичная регистрация и восстановление
-   не считаются готовыми. Не отключать подтверждение email ради обхода настройки.
-6. Миграции включены через `Database__MigrateOnStartup=true` для единственного
-   бесплатного сервиса. В EF используется блокировка миграции. Ошибка подключения
-   или миграции останавливает старт, а не пересоздаёт БД. Перед обновлением
-   существующей облачной БД нужны backup и проверка восстановления.
-7. После настройки почты развернуть сервис, проверить HTTPS, регистрацию,
-   восстановление, перезагрузку сессии и выбранную защиту финансовых данных.
-   Только после этого настроить URL Main Mini App и Menu Button в BotFather.
+## Environment
 
-## Защита от чрезмерной нагрузки
+| Ключ | Значение |
+|---|---|
+| ASPNETCORE_ENVIRONMENT | Production |
+| Http__RedirectToHttps | false, внешний TLS обслуживает Render |
+| Auth__SecureCookies | true |
+| Hosting__UseRenderExternalUrl | true |
+| Database__MigrateOnStartup | true |
+| ConnectionStrings__Database | Npgsql connection string Neon |
+| Jwt__SigningKey | Отдельный случайный ключ минимум 32 байта |
+| Telegram__BotToken / Telegram__BotUsername | Токен и username без @ |
+| Google__ClientId / Google__ClientSecret | Серверный OAuth-клиент |
+| Google__RedirectUri | https://PUBLIC_HOST/api/auth/google/callback |
+| Email__Provider | Resend |
+| Email__Endpoint | https://api.resend.com/emails |
+| Email__From / Email__ApiKey | Разрешённый отправитель и sending key |
 
-До проверки JWT и запросов к БД действует общий бюджет 600 API-запросов в минуту
-на процесс и не более 8 одновременных API-запросов без очереди. Регистрация имеет
-общий бюджет 20 за 15 минут и прежний лимит на адрес соединения. Парольный вход —
-15 попыток за минуту на адрес соединения. Telegram сохраняет отдельные лимиты.
-Health имеет отдельный бюджет 60 в минуту. Возвращаются 429 и Retry-After.
+Email-регистрация при Resend по умолчанию выключена. Auth__EmailRegistrationEnabled=false фиксирует это явно.
 
-Заголовку X-Forwarded-For и непроверенному JWT не доверяем при выборе лимита.
-За прокси адрес соединения может быть общим для нескольких пользователей;
-это консервативное ограничение. Для большого числа пользователей понадобится
-проверенная конфигурация доверенных прокси, а не чтение произвольного заголовка.
+Не сохраняйте заполненные значения в Git, переписке, логах и скриншотах. При обычном релизе не генерируйте заново JWT-ключ и не меняйте БД/бота.
 
-Kestrel ограничивает обычное тело запроса 64 КиБ, auth — 16 КиБ,
-CSV сохраняет собственный лимит 4,5 МБ. Эти меры ограничивают работу процесса,
-но не обещают защиты от распределённого сетевого DDoS или заполнения квоты
-подтверждёнными аккаунтами. Для этого отдельно нужны защита хостинга, квоты хранения
-и контроль использования. Ограничения работают в одном экземпляре, не распределённо.
+### Neon
 
-Без входящих сообщений/уведомлений Mini App не требует polling или webhook-бота:
-финансовые запросы идут нашему API, а не Bot API Telegram.
+Нужен Npgsql connection string, а не вставленная без преобразования PostgreSQL URI:
 
-Ограничения бесплатного тарифа: Render засыпает после простоя, пробуждение
-может занять около минуты; Neon имеет квоты хранения/вычислений. Это среда
-показа пет-проекта, не обещание бесперебойной работы.
+~~~text
+Host=NEON_DIRECT_HOST;Port=5432;Database=DB_NAME;Username=DB_USER;Password=DB_PASSWORD;SSL Mode=VerifyFull;Maximum Pool Size=10;Timeout=30;Multiplexing=false
+~~~
 
-## Обновление текущего тестового сервиса
+Используйте direct hostname без -pooler. Session advisory locks приватного переноса несовместимы с transaction pooling и Multiplexing; такие конфигурации отклоняются.
 
-1. Сделать коммит и push в `codex/platform-telegram`.
-2. Дождаться успешного GitHub Actions для нужного commit SHA.
-3. В Render открыть `finance-tracker-zhabinec` → Manual Deploy → Deploy latest commit.
-   Проверить SHA: один push сам по себе текущий Public Git-сервис не обновляет.
-4. Дождаться Live; проверить `/health` и основные пользовательские сценарии.
-   При изменении схемы существующей БД сначала сделать backup.
-5. Не менять ключ JWT, токен бота и строку БД при обычном обновлении.
-   Секреты остаются в Render Environment, не в Git или описаниях коммитов.
+### Миграции
 
-Для автоматического обновления после CI позже можно согласовать установку
-GitHub-интеграции с доступом только к этому репозиторию либо переход на Blueprint.
-При первом размещении дополнительные права GitHub не выдавались.
+Для единственного сервиса Database__MigrateOnStartup=true применяет EF migrations до запуска. Ошибка миграции останавливает старт, а не пересоздаёт БД.
 
-Официальные источники:
-- https://render.com/docs/free
-- https://render.com/docs/blueprint-spec
-- https://render.com/docs/environment-variables
-- https://neon.com/pricing
-- https://www.npgsql.org/doc/security.html
+Перед изменением схемы сохраните backup и проверьте восстановление. Старый образ можно вернуть только при совместимой схеме. Downgrade nullable email запрещён при существовании Telegram-only пользователей.
+
+## Обновление
+
+1. Подготовить изменения в отдельной ветке и дождаться CI.
+2. Объединить с main и перенести проверенную версию в codex/platform-telegram обычным merge.
+3. Проверить CI публикуемого SHA.
+4. Выбрать **Manual Deploy → Clear build cache & deploy**.
+5. Дождаться Live и сверить SHA.
+6. Проверить /health, вход и нужные пользовательские сценарии. Для frontend проверить новые assets.
+7. Заново открыть Mini App для загрузки нового HTML.
+
+Документационные изменения не требуют пересборки запущенного приложения. Push сам по себе текущий сервис не обновляет.
+
+## Почта
+
+Telegram/Google создают аккаунт без Resend-письма. Тестовый onboarding@resend.dev не подходит для произвольных адресатов; публичная email-регистрация закрыта, прежние почтовые маршруты сохранены.
+
+Для полноценной почты:
+
+1. Добавить собственный домен/поддомен в Resend.
+2. Внести именно выданные Resend DNS-записи и дождаться подтверждения.
+3. Настроить Email__From; не заменять существующие MX/SPF без проверки.
+4. Перезапустить сервис и проверить confirmation/reset на внешнем адресе и в журнале доставки.
+5. Включать Auth__EmailRegistrationEnabled только если нужен этот способ регистрации.
+
+Домен отправителя не требует переносить сайт с onrender.com и не даёт почтовому провайдеру финансовый ключ.
+
+## Эксплуатация
+
+/health проверяет API и БД, но не Google callback, меню бота, доставку писем или расшифровку.
+
+Следите за ошибками, квотами БД, размерами vault и резервными копиями. Дамп Neon создаётся PostgreSQL-инструментами или средствами провайдера; backup-db.ps1 к Neon напрямую не подключается.
+
+[Обслуживание и backup](deployment.md), [безопасность](security.md).
+
+Справочники: [Render Blueprint](https://render.com/docs/blueprint-spec), [Render Environment](https://render.com/docs/environment-variables), [Neon](https://neon.com/docs/introduction), [Npgsql TLS](https://www.npgsql.org/doc/security.html).
