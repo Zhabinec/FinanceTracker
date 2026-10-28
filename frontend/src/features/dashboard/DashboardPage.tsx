@@ -10,6 +10,7 @@ import { formatDate } from '../../shared/formatting'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { BudgetsPanel } from '../budgets/BudgetsPanel'
 import { ExpenseDonut } from './ExpenseDonut'
+import { DataSkeleton } from '../../shared/DataSkeleton'
 
 type Dashboard = {
   from: string; to: string; income: string; expense: string; result: string
@@ -31,9 +32,9 @@ export function DashboardPage() {
 
   return <section className="dashboard-shell">
     <section className="summary-grid dashboard-metrics" aria-busy={query.isFetching}>
-      <article className="transactions-list-card"><h2>Доходы</h2><strong className="summary-value income">{data ? money(data.income) : '—'}</strong></article>
-      <article className="transactions-list-card"><h2>Расходы</h2><strong className="summary-value expense">{data ? money(data.expense) : '—'}</strong></article>
-      <article className="transactions-list-card"><h2>Результат периода</h2><strong className="summary-value">{data ? money(data.result) : '—'}</strong>
+      <article className="transactions-list-card"><h2>Доходы</h2>{data ? <strong className="summary-value income data-reveal">{money(data.income)}</strong> : query.isPending ? <span className="skeleton-block skeleton-value" aria-label="Доходы загружаются" /> : <strong className="summary-value">—</strong>}</article>
+      <article className="transactions-list-card"><h2>Расходы</h2>{data ? <strong className="summary-value expense data-reveal">{money(data.expense)}</strong> : query.isPending ? <span className="skeleton-block skeleton-value" aria-label="Расходы загружаются" /> : <strong className="summary-value">—</strong>}</article>
+      <article className="transactions-list-card"><h2>Результат периода</h2>{data ? <strong className="summary-value data-reveal">{money(data.result)}</strong> : query.isPending ? <span className="skeleton-block skeleton-value" aria-label="Результат загружается" /> : <strong className="summary-value">—</strong>}
         <p>{!data ? 'Ожидаем данные' : data.result.startsWith('-') ? 'Расходы превысили доходы' : data.result === '0.00' ? 'Доходы равны расходам' : 'Доходы превысили расходы'}</p></article>
     </section>
     <details className="panel-disclosure dashboard-period"><summary>Период <span>{formatDate(period.from)} — {formatDate(period.to)}</span></summary>
@@ -45,11 +46,11 @@ export function DashboardPage() {
       </div>
     </section>
     </details>
-    {query.isPending && <p role="status">Загружаем статистику…</p>}
+    {query.isPending && <DataSkeleton label="Загружаем статистику…" rows={3} />}
     {query.isError && <div className="notice error">{getApiError(query.error, 'Не удалось загрузить статистику.')}</div>}
     <BudgetsPanel />
     {data && <>
-      <section className="summary-grid category-summary">
+      <section className="summary-grid category-summary data-reveal">
         <ExpenseDonut key={`${period.from}:${period.to}`} categories={data.categories} money={money} />
         <article className="transactions-list-card">
           <h2>Доходы по категориям</h2>
@@ -58,7 +59,7 @@ export function DashboardPage() {
             <li key={item.categoryId}><span>{item.categoryName}</span><strong>{money(item.amount)}</strong></li>)}</ul>
         </article>
       </section>
-      <section className="transactions-list-card"><h2>Последние операции за период</h2>
+      <section className="transactions-list-card data-reveal"><h2>Последние операции за период</h2>
         {!data.recent.length && <p>Добавьте первую операцию, чтобы увидеть статистику.</p>}
         <ul className="summary-list">{data.recent.map((item) => <li key={item.id}>
           <span>{item.categoryName} · {formatDate(item.occurredOn)}</span><strong>{item.type === 'Income' ? '+' : '−'}{money(item.amount)}</strong>
