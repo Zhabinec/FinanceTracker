@@ -7,6 +7,7 @@ import { CurrencyDisplayProvider } from './features/currencies/CurrencyDisplayPr
 import './index.css'
 import App from './App'
 import { initializeTelegram } from './platform/telegram'
+import { RuntimeOptionsProvider } from './features/auth/RuntimeOptionsProvider'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -17,7 +18,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <AuthProvider><CurrencyDisplayProvider><App /></CurrencyDisplayProvider></AuthProvider>
+        <RuntimeOptionsProvider><AuthProvider><CurrencyDisplayProvider><App /></CurrencyDisplayProvider></AuthProvider></RuntimeOptionsProvider>
       </BrowserRouter>
     </QueryClientProvider>
   </StrictMode>,

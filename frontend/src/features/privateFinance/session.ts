@@ -3,7 +3,7 @@ import { decryptDocument, encryptDocument, downloadJson, backupEnvelope, keyFrom
 import { saveDevicePin } from './devicePin'
 import { parseDocument, type FinancialDocument, type VaultEnvelope, type VaultWrite } from './model'
 
-type OpenSession = { userId: string; key: CryptoKey; head: VaultEnvelope; document: FinancialDocument }
+type OpenSession = { userId: string; key: CryptoKey; head: VaultEnvelope; document: FinancialDocument; managed: boolean }
 type PendingOperation = { identity: string; result: unknown }
 let current: OpenSession | null = null
 let operation: PendingOperation | null = null
@@ -11,12 +11,12 @@ let generation = 0
 let queue: Promise<unknown> = Promise.resolve()
 let loading: Promise<void> | null = null
 const listeners = new Set<() => void>()
-let snapshot = { unlocked: false, userId: '', vaultId: '', baseCurrency: 'RUB', revision: 0, pending: false }
+let snapshot = { unlocked: false, userId: '', vaultId: '', baseCurrency: 'RUB', revision: 0, pending: false, managed: false }
 const storageKey = (userId: string) => `finance.private.pending.${userId}`
 export const subscribeVault = (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } }
 export const vaultSnapshot = () => snapshot
 function emit() {
-  snapshot = { unlocked: Boolean(current), userId: current?.userId ?? '', vaultId: current?.head.id ?? '', baseCurrency: current?.document.baseCurrency ?? 'RUB', revision: current?.head.revision ?? 0, pending: Boolean(current && readPending(current.userId)) }
+  snapshot = { unlocked: Boolean(current), userId: current?.userId ?? '', vaultId: current?.head.id ?? '', baseCurrency: current?.document.baseCurrency ?? 'RUB', revision: current?.head.revision ?? 0, pending: Boolean(current && readPending(current.userId)), managed: current?.managed ?? false }
   listeners.forEach(listener => listener())
 }
 function readPending(userId: string): VaultWrite | null {
@@ -31,13 +31,14 @@ function readPending(userId: string): VaultWrite | null {
 function clearPending(userId: string) { sessionStorage.removeItem(storageKey(userId)) }
 export function keepEncryptedPending(userId: string, input: VaultWrite) { sessionStorage.setItem(storageKey(userId), JSON.stringify(input)) }
 export function lockVault() { generation++; current = null; operation = null; loading = null; emit() }
-export function openVault(userId: string, key: CryptoKey, head: VaultEnvelope, document: FinancialDocument) {
+export function openVault(userId: string, key: CryptoKey, head: VaultEnvelope, document: FinancialDocument, managed = false) {
   const pending = readPending(userId)
   if (pending?.id === head.id && pending.mutationId === head.mutationId) clearPending(userId)
-  generation++; current = { userId, key, head, document }; operation = null
+  generation++; current = { userId, key, head, document, managed }; operation = null
   emit()
 }
 function requireSession() { if (!current) throw new Error('Сначала разблокируйте финансовое хранилище.'); return current }
+export function markVaultManaged() { requireSession().managed = true; emit() }
 function ensureCurrent(session: OpenSession, epoch: number) { if (current !== session || generation !== epoch) throw new Error('Хранилище заблокировано. Повторите вход.') }
 export async function configureDevicePin(code: string, pin: string) {
   const session = requireSession(), epoch = generation

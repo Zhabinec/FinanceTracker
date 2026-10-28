@@ -10,6 +10,10 @@ import './App.css'
 import './motion.css'
 import { AppShell } from './shared/AppShell'
 import { PrivateFinanceGate } from './features/privateFinance/PrivateFinanceGate'
+import { useRuntimeOptions } from './features/auth/runtimeOptions'
+import { isTelegram } from './platform/telegram'
+import { AuthLayout } from './features/auth/AuthLayout'
+import { TelegramEntry } from './features/auth/TelegramEntry'
 
 const AccountPage = lazy(() => import('./features/auth/AccountPage').then(module => ({ default: module.AccountPage })))
 const AccountsPage = lazy(() => import('./features/accounts/AccountsPage').then(module => ({ default: module.AccountsPage })))
@@ -28,10 +32,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { status } = useAuth()
   const location = useLocation()
+  const { telegramOnly } = useRuntimeOptions()
   useEffect(() => {
     document.addEventListener('keydown', preventRepeatedPaste, true)
     return () => document.removeEventListener('keydown', preventRepeatedPaste, true)
   }, [])
+
+  if (telegramOnly && !isTelegram()) return <AuthLayout title="Откройте Finance Tracker в Telegram"
+    subtitle="Ваши записи доступны через ваш Telegram-аккаунт." alternateText="" alternateLink="/login" alternateLabel="">
+    <TelegramEntry />
+  </AuthLayout>
+
+  if (telegramOnly && ['/register', '/forgot-password', '/reset-password', '/verify-email', '/confirm-email'].includes(location.pathname))
+    return <Navigate to="/login" replace />
 
   return (
     <Routes>

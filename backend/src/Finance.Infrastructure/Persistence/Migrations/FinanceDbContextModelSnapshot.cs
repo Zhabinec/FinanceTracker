@@ -353,6 +353,40 @@ namespace Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("google_account_links", (string)null);
                 });
 
+            modelBuilder.Entity("Finance.Domain.Users.ManagedFinancialKey", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Ciphertext")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("KeyId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("VaultId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserId");
+
+                    b.HasIndex("VaultId")
+                        .IsUnique();
+
+                    b.ToTable("managed_financial_keys", (string)null);
+                });
+
             modelBuilder.Entity("Finance.Domain.Users.PasswordResetToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -644,6 +678,15 @@ namespace Finance.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Finance.Domain.Users.ManagedFinancialKey", b =>
+                {
+                    b.HasOne("Finance.Domain.Users.PrivateFinancialVault", null)
+                        .WithOne()
+                        .HasForeignKey("Finance.Domain.Users.ManagedFinancialKey", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

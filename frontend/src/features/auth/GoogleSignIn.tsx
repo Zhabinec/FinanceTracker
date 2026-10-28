@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import { http } from '../../api/http'
 import { isTelegram } from '../../platform/telegram'
+import { useRuntimeOptions } from './runtimeOptions'
 
 export function GoogleSignIn({ link = false }: { link?: boolean }) {
+  const { telegramOnly } = useRuntimeOptions()
   const [enabled, setEnabled] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
   useEffect(() => {
     let active = true
-    if (!isTelegram()) void http.get<{ enabled: boolean }>('/auth/google/options')
+    if (!isTelegram() && !telegramOnly) void http.get<{ enabled: boolean }>('/auth/google/options')
       .then(({ data }) => { if (active) setEnabled(data.enabled) }).catch(() => undefined)
     return () => { active = false }
-  }, [])
-  if (!enabled) return null
+  }, [telegramOnly])
+  if (!enabled || telegramOnly) return null
   return <>
     {error && <p role="alert">{error}</p>}
     <button type="button" className="ghost-button" disabled={busy} onClick={async () => {

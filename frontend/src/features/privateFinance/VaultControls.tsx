@@ -1,18 +1,24 @@
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { exportEncryptedBackup, lockVault, readEncryptedBackup, restoreFinancialBackup } from './session'
+import { exportEncryptedBackup, lockVault, readEncryptedBackup, restoreFinancialBackup, subscribeVault, vaultSnapshot } from './session'
 import type { FinancialDocument } from './model'
 import { getApiError } from '../../api/apiError'
 import { DevicePinControls } from './DevicePinControls'
+import { useRuntimeOptions } from '../auth/runtimeOptions'
+import { isTelegram } from '../../platform/telegram'
+import { ManagedKeyEnrollment } from './ManagedKeyEnrollment'
 
 export function VaultControls() {
   const client = useQueryClient()
+  const { managed } = useSyncExternalStore(subscribeVault, vaultSnapshot)
+  const { managedFinancialKeys } = useRuntimeOptions()
   const [backup, setBackup] = useState<FinancialDocument | null>(null)
   const [confirmed, setConfirmed] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const message = (e: unknown) => e instanceof Error && !('isAxiosError' in e) ? e.message : getApiError(e, 'Не удалось восстановить копию.')
   return <section className="transactions-list-card"><h2>Приватность</h2>
-    <p>Финансы зашифрованы. Код восстановления остаётся у вас.</p>
+    <p>{managed ? 'Записи зашифрованы. Доступ к истории — через ваш Telegram-аккаунт на ваших устройствах.' : 'Финансы зашифрованы. Код восстановления остаётся у вас.'}</p>
+    {managedFinancialKeys && isTelegram() && !managed && <ManagedKeyEnrollment />}
     {error && <p className="notice error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     <button className="ghost-button" disabled={busy} onClick={async () => {
       setBusy(true); setError(''); setNotice('')
@@ -22,8 +28,8 @@ export function VaultControls() {
         else if (result === 'shared') setNotice('Копия передана выбранному вами приложению.')
       } catch (failure) { setError(message(failure)) } finally { setBusy(false) }
     }}>Скачать зашифрованную копию</button>{' '}
-    <button className="ghost-button" onClick={() => { client.clear(); lockVault() }}>Заблокировать финансы</button>
-    <DevicePinControls />
+    {!managed && <><button className="ghost-button" onClick={() => { client.clear(); lockVault() }}>Заблокировать финансы</button>
+    <DevicePinControls /></>}
     <details className="panel-disclosure"><summary>Восстановить копию</summary>
       <label>Зашифрованный файл<input type="file" accept="application/json,.json" disabled={busy} onChange={async e => {
         const file = e.target.files?.[0]; setError(''); setNotice(''); setBackup(null); setConfirmed(false)
