@@ -3,9 +3,14 @@ import { useAuth } from './useAuth'
 import { TelegramLinkPanel } from './TelegramLinkPanel'
 import { VaultControls } from '../privateFinance/VaultControls'
 import { GoogleSignIn } from './GoogleSignIn'
+import { useQuery } from '@tanstack/react-query'
+import { http } from '../../api/http'
 
 export function AccountPage() {
   const { user } = useAuth()
+  const delivery = useQuery({ queryKey: ['email-delivery-mode'], queryFn: async () =>
+    (await http.get<{ simulated: boolean; restricted?: boolean; previewUrl: string | null }>('/auth/email-delivery')).data,
+    staleTime: Infinity })
 
   return (
     <section className="dashboard-shell">
@@ -17,7 +22,7 @@ export function AccountPage() {
       <VaultControls />
       <section className="transactions-list-card"><h2>Доступ к аккаунту</h2>
         <GoogleSignIn link />
-        {user?.email && <><p className="dashboard-note">Для смены пароля отправим ссылку на ваш email.</p>
+        {user?.email && delivery.data && !delivery.data.restricted && <><p className="dashboard-note">Для смены пароля отправим ссылку на ваш email.</p>
         <Link className="ghost-button link-button" to="/forgot-password">Сменить пароль</Link></>}
       </section>
     </section>

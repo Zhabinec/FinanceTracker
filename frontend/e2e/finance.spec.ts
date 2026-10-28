@@ -62,7 +62,7 @@ test('private finances stay encrypted on the network, unlock on another device a
   const login = await (await request.post('/api/auth/login', { data: { email, password } })).json()
   const headers = { Authorization: `Bearer ${login.accessToken}` }
   const owner = (await (await request.get('/api/users/me', { headers })).json()).id
-  await page.goto('/login')
+  await page.goto('/login/password')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Войти', exact: true }).click()
@@ -122,7 +122,7 @@ test('private finances stay encrypted on the network, unlock on another device a
   const secondContext = await browser.newContext({ baseURL: new URL(page.url()).origin })
   try {
     const second = await secondContext.newPage()
-    await second.goto('/login')
+    await second.goto('/login/password')
     await second.getByLabel('Email', { exact: true }).fill(email)
     await second.getByLabel('Пароль', { exact: true }).fill(password)
     await second.getByRole('button', { name: 'Войти', exact: true }).click()
@@ -156,7 +156,7 @@ test('device PIN survives reload, limits wrong attempts, recovers with the key, 
   await confirmTestAccount(request, email)
   const outgoing: string[] = []
   page.on('request', req => { if (req.url().includes('/api/')) outgoing.push(req.postData() ?? '') })
-  await page.goto('/login')
+  await page.goto('/login/password')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Войти', exact: true }).click()
@@ -182,7 +182,7 @@ test('device PIN survives reload, limits wrong attempts, recovers with the key, 
   const other = await browser.newContext({ baseURL: new URL(page.url()).origin })
   try {
     const second = await other.newPage()
-    await second.goto('/login')
+    await second.goto('/login/password')
     await second.getByLabel('Email', { exact: true }).fill(email)
     await second.getByLabel('Пароль', { exact: true }).fill(password)
     await second.getByRole('button', { name: 'Войти', exact: true }).click()
@@ -283,7 +283,7 @@ test('Telegram links an existing account, restores shared history, rotates sessi
   await page.goto('/')
   expect((await firstLaunch).status()).toBe(200)
   await expect(page.getByRole('heading', { name: 'Вход через Telegram' })).toBeVisible()
-  await page.getByText('Подключить существующий аккаунт', { exact: true }).click()
+  await page.goto('/login/password')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Привязать аккаунт' }).click()
@@ -352,7 +352,7 @@ test('monthly budgets track expenses on mobile and allow editing and removal', a
   const headers = { Authorization: `Bearer ${login.accessToken}` }
   const category = await ensureCategory(request, headers, 'Продукты')
   await request.post('/api/transactions', { headers, data: { categoryId: category.id, type: 'Expense', amount: '25.01', occurredOn: '2026-10-31' } })
-  await page.goto('/login')
+  await page.goto('/login/password')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Войти', exact: true }).click()
@@ -390,7 +390,7 @@ test('CSV preview maps columns, rejects errors and prevents duplicate imports', 
   const login = await (await request.post('/api/auth/login', { data: { email, password } })).json()
   const headers = { Authorization: `Bearer ${login.accessToken}` }
   await ensureCategory(request, headers, 'Продукты')
-  await page.goto('/login')
+  await page.goto('/login/password')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Войти', exact: true }).click()
@@ -427,7 +427,7 @@ test('recover password using a delivered one-time email link', async ({ page, re
   const original = 'Original-password-123!'
   await request.post('/api/auth/register', { data: { email, password: original, baseCurrency: 'RUB' } })
   await confirmTestAccount(request, email)
-  await page.goto('/login')
+  await page.goto('/login/password')
   await page.getByRole('link', { name: 'Забыли пароль?' }).click()
   // Both routes contain Email. Wait for the new form before filling it.
   await expect(page.getByRole('heading', { name: 'Восстановление доступа', exact: true })).toBeVisible()
@@ -460,7 +460,7 @@ test('recover password using a delivered one-time email link', async ({ page, re
 test('native clipboard preserves exact text and replaces selections across forms', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   for (const [path, label] of [
-    ['/login', 'Пароль'], ['/register', 'Пароль'], ['/reset-password#token=clipboard-test', 'Новый пароль'],
+    ['/login/password', 'Пароль'], ['/register', 'Пароль'], ['/reset-password#token=clipboard-test', 'Новый пароль'],
   ]) {
     await page.goto(path)
     const input = page.getByLabel(label, { exact: true })
@@ -693,7 +693,7 @@ test('quick category entry has two fields, preserves drafts on errors and suppor
       if (width === 390 && path === '/login') await page.screenshot({ path: 'test-results/shell-login-390.png' })
     }
   }
-  await page.goto('/login')
+  await page.goto('/login/password')
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Войти', exact: true }).click()
