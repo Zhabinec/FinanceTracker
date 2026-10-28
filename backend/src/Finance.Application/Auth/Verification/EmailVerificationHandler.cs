@@ -28,7 +28,7 @@ public sealed class EmailVerificationHandler(IEmailVerificationStore store, IRef
         if (string.IsNullOrWhiteSpace(email) || email.Length > 320 || !MailAddress.TryCreate(email, out _)) return;
         var token = tokens.Generate();
         var user = await store.IssueAsync(User.NormalizeEmail(email), tokens.Hash(token), clock.UtcNow.AddHours(24), cancellationToken);
-        if (user is null) return;
+        if (user?.Email is null) return;
         await sender.SendConfirmationAsync(user.Email,
             $"{settings.FrontendUrl.TrimEnd('/')}/confirm-email#token={Uri.EscapeDataString(token)}", cancellationToken);
     }

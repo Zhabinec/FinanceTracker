@@ -9,6 +9,12 @@ test.use({ timezoneId: 'America/Los_Angeles' })
 test.setTimeout(60_000)
 const generatedMailIds = new Set<string>()
 const recoveryCodes = new Map<string, string>()
+function signedTelegramLaunch(id: number) {
+  const fields = { auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id, first_name: 'Test' }) }
+  const secret = createHmac('sha256', 'WebAppData').update('123456789:test-only-synthetic-bot-token-never-a-real-secret').digest()
+  const hash = createHmac('sha256', secret).update(Object.entries(fields).map(([key, value]) => `${key}=${value}`).join('\n')).digest('hex')
+  return new URLSearchParams({ ...fields, hash }).toString()
+}
 
 async function unlockFinance(page: Page) {
   await expect(page.locator('.private-gate, .app-shell')).toBeVisible()
@@ -268,10 +274,7 @@ test('Telegram links an existing account, restores shared history, rotates sessi
   const headers = { Authorization: `Bearer ${login.accessToken}` }
   const category = await ensureCategory(request, headers, 'Продукты')
   expect((await request.post('/api/transactions', { headers, data: { categoryId: category.id, type: 'Expense', amount: '25', occurredOn: '2026-10-26', description: 'Telegram shared history' } })).status()).toBe(201)
-  const fields = { auth_date: String(Math.floor(Date.now() / 1000)), user: JSON.stringify({ id: Date.now(), first_name: 'Test' }) }
-  const secret = createHmac('sha256', 'WebAppData').update('123456789:test-only-synthetic-bot-token-never-a-real-secret').digest()
-  const hash = createHmac('sha256', secret).update(Object.entries(fields).map(([key, value]) => `${key}=${value}`).join('\n')).digest('hex')
-  const initData = new URLSearchParams({ ...fields, hash }).toString()
+  const initData = signedTelegramLaunch(Date.now())
   await context.clearCookies()
   await page.addInitScript(data => {
     window.Telegram = { WebApp: { initData: data, ready() {}, expand() {}, BackButton: { show() {}, hide() {}, onClick() {}, offClick() {} } } }
@@ -279,7 +282,8 @@ test('Telegram links an existing account, restores shared history, rotates sessi
   const firstLaunch = page.waitForResponse(response => response.url().endsWith('/api/auth/telegram/login'))
   await page.goto('/')
   expect((await firstLaunch).status()).toBe(200)
-  await expect(page.getByRole('heading', { name: 'Подключить Telegram' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Вход через Telegram' })).toBeVisible()
+  await page.getByText('Подключить существующий аккаунт', { exact: true }).click()
   await page.getByLabel('Email', { exact: true }).fill(email)
   await page.getByLabel('Пароль', { exact: true }).fill(password)
   await page.getByRole('button', { name: 'Привязать аккаунт' }).click()
@@ -302,9 +306,41 @@ test('Telegram links an existing account, restores shared history, rotates sessi
   await page.screenshot({ path: 'test-results/telegram-mobile.png', fullPage: true })
   expect(await context.cookies()).toHaveLength(0)
   await page.getByRole('button', { name: 'Отключить Telegram' }).click()
-  await expect(page.getByRole('heading', { name: 'Подключить Telegram' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Вход через Telegram' })).toBeVisible()
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Подключить Telegram' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Вход через Telegram' })).toBeVisible()
+})
+
+test('Telegram first launch creates an account without email and restores it automatically', async ({ page, context }) => {
+  test.skip(process.env.E2E_TELEGRAM !== 'true', 'Requires the synthetic test bot')
+  const initData = signedTelegramLaunch(Date.now() + 50000)
+  await context.clearCookies()
+  await page.addInitScript(data => { window.Telegram = { WebApp: { initData: data, ready() {}, expand() {} } } }, initData)
+  const requests: string[] = []
+  page.on('request', req => requests.push(new URL(req.url()).pathname))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  await expect(page.getByRole('heading', { name: 'Вход через Telegram', exact: true })).toBeVisible()
+  await expect(page.getByLabel('Email', { exact: true })).toBeHidden()
+  await page.screenshot({ path: 'test-results/telegram-first-launch.png', fullPage: true })
+  const registration = page.waitForResponse(response => response.url().endsWith('/api/auth/telegram/register'))
+  const profile = page.waitForResponse(response => response.url().endsWith('/api/users/me'))
+  await page.getByRole('button', { name: 'Начать в Telegram', exact: true }).click()
+  expect((await registration).status()).toBe(200)
+  const owner = await (await profile).json()
+  expect(owner.email).toBeNull()
+  await unlockFinance(page)
+  await page.getByRole('link', { name: 'Аккаунт', exact: true }).click()
+  await expect(page.locator('.welcome-card').getByRole('heading', { name: 'Telegram', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Отключить Telegram', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Сменить пароль', exact: true })).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('.private-gate')).toHaveAttribute('data-vault-user', owner.id)
+  await unlockFinance(page)
+  await expect(page.locator('.app-shell')).toBeVisible()
+  expect(await context.cookies()).toHaveLength(0)
+  expect(requests).not.toContain('/api/auth/register')
+  expect(requests).not.toContain('/api/auth/resend-confirmation')
 })
 
 test('monthly budgets track expenses on mobile and allow editing and removal', async ({ page, request }) => {

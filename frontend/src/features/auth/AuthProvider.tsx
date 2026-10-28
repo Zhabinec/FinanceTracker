@@ -46,6 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     status,
     user,
     restoreError,
+    async signInWithTelegram() {
+      lockVault()
+      queryClient.clear()
+      const currentUser = await authApi.registerTelegram()
+      setUser(currentUser)
+      setRestoreError('')
+      setStatus('authenticated')
+    },
     async signIn(email, password) {
       lockVault()
       const currentUser = await authApi.login(email, password)

@@ -25,9 +25,9 @@ public sealed class JwtAccessTokenProvider(
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim("security_stamp", user.SecurityStamp.ToString()),
-            new Claim(JwtRegisteredClaimNames.Email, user.Email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
+        if (user.Email is not null) claims.Add(new Claim(JwtRegisteredClaimNames.Email, user.Email));
         if (linkVersion is not null) claims.Add(new Claim("telegram_link", linkVersion.Value.ToString()));
 
         var token = new JwtSecurityToken(

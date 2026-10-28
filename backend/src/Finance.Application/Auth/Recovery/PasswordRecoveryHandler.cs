@@ -26,7 +26,7 @@ public sealed class PasswordRecoveryHandler(IPasswordRecoveryStore store, IRefre
         if (string.IsNullOrWhiteSpace(email) || email.Length > 320 || !MailAddress.TryCreate(email, out _)) return;
         var token = tokens.Generate();
         var user = await store.IssueAsync(User.NormalizeEmail(email), tokens.Hash(token), clock.UtcNow.AddMinutes(30), cancellationToken);
-        if (user is null) return;
+        if (user?.Email is null) return;
         // Fragment keeps the secret out of HTTP access logs and referrer headers.
         var link = $"{settings.FrontendUrl.TrimEnd('/')}/reset-password#token={Uri.EscapeDataString(token)}";
         await sender.SendAsync(user.Email, link, cancellationToken);

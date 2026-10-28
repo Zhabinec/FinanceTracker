@@ -16,6 +16,10 @@ public sealed class TelegramAuthController(TelegramAuthHandler handler, ITelegra
     [HttpGet("options")]
     public IActionResult Options() => Ok(new { settings.Enabled, settings.BotUsername });
 
+    [HttpPost("register")]
+    public async Task<ActionResult<TelegramTokens>> Register(LaunchRequest request, CancellationToken ct) =>
+        Ok(await handler.RegisterAsync(request.InitData, ct));
+
     [HttpPost("login")]
     public async Task<IActionResult> Login(LaunchRequest request, CancellationToken ct)
     {

@@ -4,7 +4,7 @@ import { isTelegram, telegramInitData, telegramLaunchError } from '../../platfor
 
 export type CurrentUser = {
   id: string
-  email: string
+  email: string | null
   registeredAtUtc: string
   baseCurrency: string
 }
@@ -24,6 +24,14 @@ export async function login(email: string, password: string) {
 
 export async function register(email: string, password: string) {
   await http.post('/auth/register', { email, password })
+}
+
+export async function registerTelegram() {
+  if (!isTelegram() || telegramLaunchError()) throw new Error(telegramLaunchError() || 'Откройте приложение через Telegram.')
+  const { data } = await http.post<TokenResponse>('/auth/telegram/register', { initData: telegramInitData() })
+  setTelegramRefreshToken(data.refreshToken ?? null)
+  setAccessToken(data.accessToken)
+  return getCurrentUser()
 }
 
 export function restoreSession() {

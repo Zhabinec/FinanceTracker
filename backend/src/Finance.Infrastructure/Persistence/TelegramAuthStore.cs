@@ -8,6 +8,34 @@ namespace Finance.Infrastructure.Persistence;
 
 public sealed class TelegramAuthStore(FinanceDbContext db) : ITelegramAuthStore
 {
+    public async Task<TelegramSessionOwner> RegisterAndOpenAsync(long telegramUserId, string randomPasswordHash,
+        string tokenHash, DateTimeOffset now, DateTimeOffset expires, CancellationToken ct)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock({telegramUserId})", ct);
+        var link = await db.TelegramAccountLinks.AsNoTracking().SingleOrDefaultAsync(x => x.TelegramUserId == telegramUserId, ct);
+        User user;
+        if (link is not null)
+        {
+            user = await LockUser(link.UserId, false, ct) ?? throw new UnauthorizedAccessException();
+            var currentLink = await FindLinkAsync(user.Id, ct);
+            if (!CanUseTelegram(user) || currentLink?.Version != link.Version) throw new UnauthorizedAccessException();
+        }
+        else
+        {
+            user = User.CreateTelegram(randomPasswordHash, now);
+            db.Users.Add(user);
+            db.Accounts.Add(Finance.Domain.Accounts.Account.CreatePrimary(user.Id, user.BaseCurrency));
+            db.Categories.AddRange(Finance.Domain.Categories.StarterCategories.Create(user.Id));
+            link = TelegramAccountLink.Create(user.Id, telegramUserId, now);
+            db.TelegramAccountLinks.Add(link);
+        }
+        AddSession(user, link, tokenHash, now, expires);
+        try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        { throw LinkConflict(); }
+        return new(user, link.Version);
+    }
     public Task<TelegramAccountLink?> FindLinkAsync(Guid userId, CancellationToken ct) =>
         db.TelegramAccountLinks.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == userId, ct);
 
@@ -19,7 +47,7 @@ public sealed class TelegramAuthStore(FinanceDbContext db) : ITelegramAuthStore
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var user = await LockUser(owner.Value, false, ct);
         var link = await FindLinkAsync(owner.Value, ct);
-        if (user?.EmailConfirmedAtUtc is null || link?.TelegramUserId != telegramUserId) return null;
+        if (user is null || !CanUseTelegram(user) || link?.TelegramUserId != telegramUserId) return null;
         AddSession(user, link, tokenHash, now, expires);
         await db.SaveChangesAsync(ct);
         await transaction.CommitAsync(ct);
@@ -50,7 +78,7 @@ public sealed class TelegramAuthStore(FinanceDbContext db) : ITelegramAuthStore
         if (owner is null) return null;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var user = await LockUser(owner.Value, false, ct);
-        if (user?.EmailConfirmedAtUtc is null) return null;
+        if (user is null || !CanUseTelegram(user)) return null;
         var current = await db.RefreshSessions.FromSqlInterpolated($"SELECT * FROM refresh_sessions WHERE \"TokenHash\" = {tokenHash} FOR UPDATE").SingleOrDefaultAsync(ct);
         var link = await FindLinkAsync(user.Id, ct);
         if (current is null || link is null || current.TelegramLinkVersion != link.Version || current.UserId != user.Id ||
@@ -67,6 +95,7 @@ public sealed class TelegramAuthStore(FinanceDbContext db) : ITelegramAuthStore
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var user = await LockUser(userId, true, ct);
         if (user is null || user.SecurityStamp != securityStamp) throw new UnauthorizedAccessException();
+        if (user.Email is null) throw new ConflictException("Нельзя отключить единственный способ входа в аккаунт.");
         var link = await db.TelegramAccountLinks.SingleOrDefaultAsync(x => x.UserId == userId, ct);
         if (link is null) return false;
         if (link.Version != version) throw new ConflictException("Привязка изменилась. Обновите страницу.");
@@ -88,5 +117,6 @@ public sealed class TelegramAuthStore(FinanceDbContext db) : ITelegramAuthStore
         : db.Users.FromSqlInterpolated($"SELECT * FROM users WHERE \"Id\" = {userId} FOR SHARE").AsNoTracking().SingleOrDefaultAsync(ct);
     private void AddSession(User user, TelegramAccountLink link, string hash, DateTimeOffset now, DateTimeOffset expires) =>
         db.RefreshSessions.Add(RefreshSession.Create(user.Id, hash, now, expires, user.SecurityStamp, link.Version));
+    private static bool CanUseTelegram(User user) => user.Email is null || user.EmailConfirmedAtUtc is not null;
     private static ConflictException LinkConflict() => new("Telegram или этот аккаунт уже связан с другим аккаунтом. Сначала отключите прежнюю привязку в профиле.");
 }

@@ -222,7 +222,7 @@ export function PrivateFinanceGate({ children }: { children: ReactNode }) {
         <button className="text-button" disabled={busy} onClick={() => { setEnablePin(false); void prepare() }}>Только код восстановления</button>
       </>}
     <details className="panel-disclosure" onToggle={e => setAccountOpen(e.currentTarget.open)}><summary>Доступ к аккаунту</summary>
-      {accountOpen && <><p>{auth.user?.email}</p><Link to="/forgot-password">Сменить пароль</Link><TelegramLinkPanel /></>}
+      {accountOpen && <><p>{auth.user?.email ?? 'Telegram'}</p>{auth.user?.email && <Link to="/forgot-password">Сменить пароль</Link>}<TelegramLinkPanel /></>}
     </details>
     <button className="text-button" type="button" disabled={busy} onClick={() => void auth.signOut()}>Выйти из аккаунта</button>
   </section></main>

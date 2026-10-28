@@ -6,6 +6,16 @@ namespace Finance.UnitTests.Domain;
 public sealed class UserTests
 {
     [Fact]
+    public void TelegramUserHasNoInventedEmailOrVerifiedEmail()
+    {
+        var user = User.CreateTelegram("random-password-hash", DateTimeOffset.UtcNow);
+        Assert.Null(user.Email);
+        Assert.Null(user.NormalizedEmail);
+        Assert.Null(user.EmailConfirmedAtUtc);
+        Assert.Equal("RUB", user.BaseCurrency);
+        Assert.NotEqual(Guid.Empty, user.Id);
+    }
+    [Fact]
     public void Create_PreservesEmailAndNormalizesEmailForLookup()
     {
         var user = User.Create(

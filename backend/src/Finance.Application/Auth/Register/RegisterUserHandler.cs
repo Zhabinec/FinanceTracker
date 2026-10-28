@@ -40,7 +40,7 @@ public sealed class RegisterUserHandler(
         await emailVerification.RequestAsync(user.Email, cancellationToken);
         return RegisterUserResult.Success(new RegisteredUserDto(
             user.Id,
-            user.Email,
+            user.Email!,
             user.BaseCurrency,
             user.RegisteredAtUtc));
     }

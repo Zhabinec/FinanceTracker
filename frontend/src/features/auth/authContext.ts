@@ -7,6 +7,7 @@ export type AuthContextValue = {
   user: CurrentUser | null
   restoreError: string
   signIn(email: string, password: string): Promise<void>
+  signInWithTelegram(): Promise<void>
   signOut(): Promise<void>
 }
 
