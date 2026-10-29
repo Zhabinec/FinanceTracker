@@ -22,7 +22,7 @@ public sealed class FinancialDashboardHandler(ICurrentUser current, IFinancialBo
             .Select(x => new { x.Key.CategoryId, x.Key.Type, Amount = x.Sum(a => a.Amount) }).ToArray();
         var income = totals.Where(x => x.Type == TransactionType.Income).Sum(x => x.Amount);
         var expense = totals.Where(x => x.Type == TransactionType.Expense).Sum(x => x.Amount);
-        var (recent, _) = await book.TransactionsAsync(new(From: from, To: to, PageSize: 5), ct);
+        var recent = await book.RecentTransactionsAsync(from, to, ct);
         var result = new DashboardDto(from, to, FinancialVersions.Money(income), FinancialVersions.Money(expense), FinancialVersions.Money(income - expense),
             totals.OrderByDescending(x => x.Amount).ThenBy(x => x.CategoryId).Select(x => new CategoryTotalDto(x.CategoryId,
                 categories[x.CategoryId].Name, x.Type, FinancialVersions.Money(x.Amount))).ToArray(),

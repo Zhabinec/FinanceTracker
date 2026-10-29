@@ -27,6 +27,7 @@ public interface IFinancialBook : IAsyncDisposable
     Task<bool> ImportedAsync(string fingerprint, CancellationToken ct);
     Task<Guid> SaveImportAsync(string fingerprint, int count, CancellationToken ct);
     Task<(IReadOnlyList<TransactionData> Items, int Count)> TransactionsAsync(TransactionQuery query, CancellationToken ct);
+    Task<IReadOnlyList<TransactionData>> RecentTransactionsAsync(DateOnly from, DateOnly to, CancellationToken ct);
     Task SaveTransactionAsync(TransactionData value, TransactionData? previous, RequestReceipt? receipt, CancellationToken ct);
     Task DeleteTransactionAsync(TransactionData value, CancellationToken ct);
     Task CommitAsync(CancellationToken ct);

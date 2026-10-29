@@ -1,5 +1,29 @@
 import { test, expect } from '@playwright/test'
 
+test('Telegram reveals the HTML shell and wakes the API before the React bundle arrives', async ({ page }) => {
+  let releaseBundle!: () => void
+  const bundleGate = new Promise<void>(resolve => { releaseBundle = resolve })
+  let policyRequests = 0
+  await page.route('**/assets/index-*.js', async route => { await bundleGate; await route.continue() })
+  await page.route('https://telegram.org/js/telegram-web-app.js', route => route.fulfill({ contentType: 'application/javascript',
+    body: 'window.Telegram={WebApp:{initData:"synthetic-early-launch",ready(){document.documentElement.dataset.telegramReady="true"},expand(){}}}' }))
+  await page.route('**/api/**', route => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/auth/options') { policyRequests++; return route.fulfill({ json: { emailRegistrationEnabled: false, telegramOnly: true, managedFinancialKeys: true } }) }
+    if (path === '/api/auth/telegram/login') return route.fulfill({ json: { linkRequired: true, session: null } })
+    return route.fulfill({ status: 404 })
+  })
+  try {
+    await page.goto('/#tgWebAppData=synthetic-early-launch', { waitUntil: 'commit' })
+    await expect(page.locator('html')).toHaveAttribute('data-telegram-ready', 'true')
+    await expect(page.getByRole('heading', { name: 'Finance Tracker', exact: true })).toBeVisible()
+    await expect.poll(() => policyRequests).toBe(1)
+    releaseBundle()
+    await expect(page.getByRole('button', { name: 'Начать в Telegram', exact: true })).toBeVisible()
+    expect(policyRequests).toBe(1)
+  } finally { releaseBundle() }
+})
+
 test('HTML startup remains visible while the Telegram SDK loads and API readiness starts in parallel', async ({ page }) => {
   let finishSdk!: () => void
   const sdkGate = new Promise<void>(resolve => { finishSdk = resolve })

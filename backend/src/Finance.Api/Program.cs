@@ -60,6 +60,7 @@ builder.Services.AddDbContext<FinanceDbContext>(options =>
 builder.Services.AddScoped<IUserRegistrationStore, UserRegistrationStore>();
 builder.Services.AddScoped<IUserLoginStore, UserLoginStore>();
 builder.Services.AddScoped<IUserProfileStore, UserProfileStore>();
+builder.Services.AddScoped<IUserAccessStateStore, UserAccessStateStore>();
 builder.Services.AddHttpClient("cbr-rates", client => { client.Timeout = TimeSpan.FromSeconds(10); client.MaxResponseContentBufferSize = 256_000; });
 builder.Services.AddSingleton<Finance.Application.Currencies.IExchangeRateProvider>(services =>
     new Finance.Infrastructure.Currencies.CbrExchangeRateProvider(
@@ -182,17 +183,15 @@ builder.Services
             OnTokenValidated = async context =>
             {
                 if (!Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out var userId)) { context.Fail("Invalid subject."); return; }
-                var store = context.HttpContext.RequestServices.GetRequiredService<IUserProfileStore>();
-                var user = await store.FindByIdAsync(userId, context.HttpContext.RequestAborted);
                 var telegramVersion = context.Principal?.FindFirst("telegram_link")?.Value;
                 if (telegramOnly && telegramVersion is null) { context.Fail("Open the application through Telegram."); return; }
-                if (user is null || (user.EmailConfirmedAtUtc is null && (user.Email is not null || telegramVersion is null)) || context.Principal?.FindFirst("security_stamp")?.Value != user.SecurityStamp.ToString())
+                var accessStore = context.HttpContext.RequestServices.GetRequiredService<IUserAccessStateStore>();
+                var access = await accessStore.ReadAsync(userId, context.HttpContext.RequestAborted);
+                if (access is null || (!access.EmailConfirmed && (access.HasEmail || telegramVersion is null)) || context.Principal?.FindFirst("security_stamp")?.Value != access.SecurityStamp.ToString())
                 { context.Fail("Session is no longer valid."); return; }
                 if (telegramVersion is not null)
                 {
-                    var links = context.HttpContext.RequestServices.GetRequiredService<ITelegramAuthStore>();
-                    var link = await links.FindLinkAsync(userId, context.HttpContext.RequestAborted);
-                    if (!Guid.TryParse(telegramVersion, out var version) || link?.Version != version)
+                    if (!Guid.TryParse(telegramVersion, out var version) || access.TelegramLinkVersion != version)
                         context.Fail("Telegram was disconnected.");
                 }
             }

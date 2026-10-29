@@ -20,11 +20,13 @@ public sealed class FinancialBooks(FinanceDbContext db, FinancialKeyProtection k
             var ownerText = owner.ToString();
             if (write) await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({ownerText}, 713))", ct);
             // Readers use a consistent MVCC snapshot and do not block adding a new expense.
-            var workspace = await db.FinancialWorkspaces.SingleOrDefaultAsync(x => x.UserId == owner, ct)
-                ?? throw new ConflictException("История ещё не перенесена в серверное хранилище.");
-            var key = await db.ManagedFinancialKeys.AsNoTracking().SingleOrDefaultAsync(x => x.UserId == owner && x.VaultId == workspace.VaultId, ct)
-                ?? throw new ConflictException("Финансовый ключ недоступен.");
-            return new FinancialBook(db, transaction, new FinancialRecordProtection(owner, keys.Unprotect(key)), workspace, write);
+            var query = from workspace in db.FinancialWorkspaces
+                        join key in db.ManagedFinancialKeys on new { workspace.UserId, workspace.VaultId } equals new { key.UserId, key.VaultId }
+                        where workspace.UserId == owner
+                        select new { Workspace = workspace, Key = key };
+            var state = await (write ? query : query.AsNoTracking()).SingleOrDefaultAsync(ct)
+                ?? throw new ConflictException("Финансовое хранилище или его ключ недоступны.");
+            return new FinancialBook(db, transaction, new FinancialRecordProtection(owner, keys.Unprotect(state.Key)), state.Workspace, write);
         }
         catch { await transaction.DisposeAsync(); throw; }
     }
@@ -36,7 +38,8 @@ internal sealed partial class FinancialBook(FinanceDbContext db, IDbContextTrans
     private bool committed;
     public string BaseCurrency => workspace.BaseCurrency;
     private Guid Owner => workspace.UserId;
-    private IQueryable<FinancialRecord> Rows(FinancialRecordKind kind) => db.FinancialRecords.Where(x => x.UserId == Owner && x.Kind == kind);
+    private IQueryable<FinancialRecord> Rows(FinancialRecordKind kind) =>
+        (writable ? db.FinancialRecords : db.FinancialRecords.AsNoTracking()).Where(x => x.UserId == Owner && x.Kind == kind);
     private Task<FinancialRecord?> FindRow(FinancialRecordKind kind, Guid id, CancellationToken ct)
     {
         var local = db.FinancialRecords.Local.FirstOrDefault(x => x.UserId == Owner && x.Kind == kind && x.Id == id);
@@ -55,6 +58,11 @@ internal sealed partial class FinancialBook(FinanceDbContext db, IDbContextTrans
         (await Rows(FinancialRecordKind.Account).ToListAsync(ct)).Select(protection.Decrypt<AccountData>).ToArray();
     public async Task<IReadOnlyList<CategoryData>> CategoriesAsync(CancellationToken ct) =>
         (await Rows(FinancialRecordKind.Category).ToListAsync(ct)).Select(protection.Decrypt<CategoryData>).ToArray();
+
+    public async Task<IReadOnlyList<TransactionData>> RecentTransactionsAsync(DateOnly from, DateOnly to, CancellationToken ct) =>
+        (await Rows(FinancialRecordKind.Transaction).Where(row => row.OccurredOn >= from && row.OccurredOn <= to)
+            .OrderByDescending(row => row.OccurredOn).ThenByDescending(row => row.CreatedAtUtc).ThenBy(row => row.Id)
+            .Take(5).ToListAsync(ct)).Select(protection.Decrypt<TransactionData>).ToArray();
 
     public async Task<(IReadOnlyList<TransactionData> Items, int Count)> TransactionsAsync(TransactionQuery query, CancellationToken ct)
     {
@@ -144,7 +152,7 @@ internal sealed partial class FinancialBook(FinanceDbContext db, IDbContextTrans
                 x.State is EntityState.Added or EntityState.Modified).ToArray())
                 if (protection.Decrypt<DailyTotalData>(entry.Entity).Count == 0) db.FinancialRecords.Remove(entry.Entity);
         if (writable && db.ChangeTracker.Entries<FinancialRecord>().Any(x => x.Entity.UserId == Owner && x.State != EntityState.Unchanged)) workspace.Advance();
-        try { await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); committed = true; }
+        try { if (writable) await db.SaveChangesAsync(ct); await transaction.CommitAsync(ct); committed = true; }
         catch (DbUpdateConcurrencyException) { throw new ConflictException("Финансовая запись уже изменена. Обновите данные."); }
     }
     public async ValueTask DisposeAsync()

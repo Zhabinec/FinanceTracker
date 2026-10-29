@@ -25,6 +25,7 @@ public sealed class FinancialBudgetHandler(ICurrentUser current, IFinancialBooks
         MonthlyBudget.ValidateMonth(request.Month);
         await using var book = await books.OpenAsync(Owner, false, ct);
         var budgets = await book.BudgetsAsync(request.Month, ct);
+        if (budgets.Count == 0) { await book.CommitAsync(ct); return []; }
         var categories = (await book.CategoriesAsync(ct)).ToDictionary(x => x.Id);
         var daily = await book.DailyTotalsAsync(request.Month, request.Month.AddMonths(1).AddDays(-1), ct);
         var spent = daily.Where(x => x.Type == TransactionType.Expense).GroupBy(x => x.CategoryId).ToDictionary(x => x.Key, x => x.Sum(a => a.Amount));

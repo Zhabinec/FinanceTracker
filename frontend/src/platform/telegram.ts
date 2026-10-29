@@ -29,6 +29,7 @@ export async function initializeTelegram() {
   } catch { /* Storage may be disabled by the host. Initial launches still work. */ }
   if (!telegramLaunch) return
   try {
+    if (window.financeStartup?.telegramReady) await window.financeStartup.telegramReady
     if (!window.Telegram?.WebApp) {
       await new Promise<void>((resolve, reject) => {
         const script = document.createElement('script')
@@ -41,8 +42,7 @@ export async function initializeTelegram() {
     }
     const app = window.Telegram?.WebApp
     if (!app?.initData) throw new Error('missing launch data')
-    app.ready()
-    app.expand()
+    if (!window.financeStartup?.telegramReady) { app.ready(); app.expand() }
     document.documentElement.classList.add('telegram-app')
   } catch {
     launchError = 'Не удалось открыть Telegram. Закройте приложение и откройте его снова через бота.'

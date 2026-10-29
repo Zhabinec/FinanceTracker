@@ -20,6 +20,9 @@ public sealed class FinancialBookMigration(FinanceDbContext db, FinancialKeyProt
     }
     public async Task<FinancialBookStatus> OpenAsync(Guid owner, CancellationToken ct)
     {
+        var current = await StatusAsync(owner, ct);
+        if (current.Ready) return current;
+        // Bootstrap/migration still takes the owner lock and rechecks inside the transaction.
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var ownerText = owner.ToString();
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({ownerText}, 713))", ct);
