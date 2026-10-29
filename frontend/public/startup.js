@@ -1,7 +1,9 @@
 // Runs independently of the React bundle so Telegram can reveal the HTML shell early.
 (() => {
   const policyController = new AbortController()
-  const policyTimeout = setTimeout(() => policyController.abort(), 10000)
+  // A wake-up response can stay attached to a stale proxy connection. Probe again
+  // promptly instead of adding a long client timeout after the backend is ready.
+  const policyTimeout = setTimeout(() => policyController.abort(), 5000)
   const policyRequest = fetch('/api/auth/options', { signal: policyController.signal, cache: 'no-store', credentials: 'include' })
     .then(async response => ({ status: response.status, data: await response.json().catch(() => null) }))
     .finally(() => clearTimeout(policyTimeout))

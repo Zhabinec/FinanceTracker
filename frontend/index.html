@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#fff8ed" />
     <title>Finance Tracker</title>
+    <script defer src="/startup.js"></script>
     <style>
       html{background:#fff8ed;color:#25231f;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#b5a1ed #fff8ed}body{margin:0}@supports not(scrollbar-gutter:stable){html{overflow-y:scroll}}
       .startup-screen{min-height:100svh;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;box-sizing:border-box}
@@ -18,7 +19,6 @@
   <body>
     <div id="root"><main class="startup-screen" aria-busy="true"><img class="startup-mascot" src="/images/wallet-buddy.webp" width="120" height="120" alt="" aria-hidden="true" decoding="async" fetchpriority="low"><h1>Finance Tracker</h1><p role="status">Открываем ваши финансы…</p><span class="startup-progress" aria-hidden="true"></span></main></div>
     <noscript>Для работы Finance Tracker включите JavaScript в Telegram.</noscript>
-    <script src="/startup.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
