@@ -23,7 +23,7 @@ async function fetchPolicy(): Promise<RuntimeOptions> {
       const { data } = initial ? await initial.then(response => {
         if (response.status < 200 || response.status >= 300) throw new PolicyResponseError(response.status)
         return response
-      }) : await http.get('/auth/options', { timeout: Math.min(10_000, Math.max(1, deadline - Date.now())) })
+      }) : await http.get('/auth/options', { timeout: Math.min(5_000, Math.max(1, deadline - Date.now())) })
       // Render may return an HTML wake-up page with HTTP 200. Never interpret it
       // as a valid policy or render its contents inside the application.
       if (!data || typeof data !== 'object' || !('emailRegistrationEnabled' in data) || typeof data.emailRegistrationEnabled !== 'boolean')
@@ -33,7 +33,10 @@ async function fetchPolicy(): Promise<RuntimeOptions> {
       const status = error instanceof PolicyResponseError ? error.status : axios.isAxiosError(error) ? error.response?.status : undefined
       if ((status !== undefined && ![408, 429, 502, 503, 504].includes(status)) ||
         navigator.onLine === false || Date.now() >= deadline) throw error
-      await new Promise(resolve => setTimeout(resolve, Math.min(1000 + attempt * 500, 4000, deadline - Date.now())))
+      // Back off immediate proxy errors instead of polling a waking service twice
+      // every second. Rate limiting keeps its longer pause.
+      const pause = status === 429 ? 4000 : Math.min(500 + attempt * 250, 2000)
+      await new Promise(resolve => setTimeout(resolve, Math.min(pause, deadline - Date.now())))
     }
   }
 }
