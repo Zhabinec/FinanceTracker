@@ -11,6 +11,7 @@ import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { BudgetsPanel } from '../budgets/BudgetsPanel'
 import { ExpenseDonut } from './ExpenseDonut'
 import { DataSkeleton } from '../../shared/DataSkeleton'
+import { Mascot } from '../../shared/Mascot'
 
 type Dashboard = {
   from: string; to: string; income: string; expense: string; result: string
@@ -31,6 +32,14 @@ export function DashboardPage() {
   const data = query.data
 
   return <section className="dashboard-shell">
+    <section className="overview-intro" aria-label="Быстрая запись">
+      <div className="overview-intro-copy"><p className="eyebrow">Каждый день — яснее</p>
+        <h2>Деньги,<br />по полочкам.</h2>
+        <p>Ваши доходы, расходы и планы.</p>
+        <Link className="primary-button" to="/categories"><span aria-hidden="true">＋</span> Записать расход</Link>
+      </div>
+      <div className="overview-art"><span className="mascot-orbit" aria-hidden="true" /><Mascot eager /></div>
+    </section>
     <section className="summary-grid dashboard-metrics" aria-busy={query.isFetching}>
       <article className="transactions-list-card"><h2>Доходы</h2>{data ? <strong className="summary-value income data-reveal">{money(data.income)}</strong> : query.isPending ? <span className="skeleton-block skeleton-value" aria-label="Доходы загружаются" /> : <strong className="summary-value">—</strong>}</article>
       <article className="transactions-list-card"><h2>Расходы</h2>{data ? <strong className="summary-value expense data-reveal">{money(data.expense)}</strong> : query.isPending ? <span className="skeleton-block skeleton-value" aria-label="Расходы загружаются" /> : <strong className="summary-value">—</strong>}</article>

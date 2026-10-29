@@ -4,19 +4,19 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#f2f0e9" />
+    <meta name="theme-color" content="#fff8ed" />
     <title>Finance Tracker</title>
     <style>
-      html{background:#f2f0e9;color:#19231d;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0}
+      html{background:#fff8ed;color:#25231f;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}body{margin:0}
       .startup-screen{min-height:100svh;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px;box-sizing:border-box}
-      .startup-mark{width:64px;height:64px;display:grid;place-items:center;background:#287660;color:white;border-radius:20px;font-size:36px;font-weight:600}
+      .startup-mascot{width:120px;height:120px;object-fit:contain}
       .startup-screen h1{font-size:24px;margin:20px 0 4px}.startup-screen p{margin:12px 0}.startup-hint{max-width:300px;font-size:14px;color:#59655d;line-height:1.5}
-      .startup-progress{width:120px;height:4px;background:#d7dfd3;border-radius:4px;overflow:hidden;margin:12px}.startup-progress:after{content:"";display:block;width:40%;height:100%;background:#287660;animation:startup-slide 1.5s ease-in-out infinite alternate;border-radius:4px}
+      .startup-progress{width:120px;height:8px;background:#fffdf7;border:1px solid #25231f;border-radius:4px;overflow:hidden;margin:12px}.startup-progress:after{content:"";display:block;width:40%;height:100%;background:#b5a1ed;animation:startup-slide 1.5s ease-in-out infinite alternate;border-radius:4px}
       @keyframes startup-slide{from{transform:translateX(-100%)}to{transform:translateX(250%)}}@media(prefers-reduced-motion:reduce){.startup-progress:after{animation:none;transform:translateX(75%)}}
     </style>
   </head>
   <body>
-    <div id="root"><main class="startup-screen" aria-busy="true"><div class="startup-mark" aria-hidden="true">₽</div><h1>Finance Tracker</h1><p role="status">Открываем ваши финансы…</p><span class="startup-progress" aria-hidden="true"></span></main></div>
+    <div id="root"><main class="startup-screen" aria-busy="true"><img class="startup-mascot" src="/images/wallet-buddy.webp" width="120" height="120" alt="" aria-hidden="true" decoding="async" fetchpriority="low"><h1>Finance Tracker</h1><p role="status">Открываем ваши финансы…</p><span class="startup-progress" aria-hidden="true"></span></main></div>
     <noscript>Для работы Finance Tracker включите JavaScript в Telegram.</noscript>
     <script src="/startup.js"></script>
     <script type="module" src="/src/main.tsx"></script>
