@@ -1,29 +1,9 @@
 import { test, expect } from '@playwright/test'
-import { newRecoveryCode, keyFromCode, encryptDocument } from '../src/features/privateFinance/crypto.ts'
-import { parseDocument } from '../src/features/privateFinance/model.ts'
+import { financialApp } from './fixtures/financialApp'
 
-test('private expenses: chart totals, centred history signs, responsive layout and accessible motion', async ({ page }) => {
-  const owner = crypto.randomUUID(), vaultId = crypto.randomUUID(), account = crypto.randomUUID(), target = crypto.randomUUID()
-  const food = crypto.randomUUID(), transport = crypto.randomUUID(), salary = crypto.randomUUID()
-  const code = await newRecoveryCode(), key = await keyFromCode(code)
-  const document = parseDocument({ format: 1, baseCurrency: 'RUB', accounts: [account, target].map((id, i) => ({ id, name: i ? 'Наличные' : 'Основной счёт', currency: 'RUB', openingBalance: '0.00', isArchived: false, version: crypto.randomUUID() })),
-    categories: [{ id: food, name: 'Продукты', type: 'Expense', isActive: true }, { id: transport, name: 'Транспорт', type: 'Expense', isActive: true }, { id: salary, name: 'Зарплата', type: 'Income', isActive: true }],
-    transactions: [[food, 'Expense', '75.00', '2026-10-15'], [transport, 'Expense', '25.00', '2026-10-15'], [salary, 'Income', '500.00', '2026-10-15'], [food, 'Expense', '900.00', '2026-09-01']].map(([categoryId, type, amount, occurredOn]) => ({ id: crypto.randomUUID(), accountId: account, categoryId, type, amount, description: null, occurredOn, createdAtUtc: '2026-10-15T12:00:00Z', version: crypto.randomUUID() })),
-    transfers: [{ id: crypto.randomUUID(), requestId: crypto.randomUUID(), sourceAccountId: account, targetAccountId: target, currency: 'RUB', amount: '100.00', description: null, occurredOn: '2026-10-15', createdAtUtc: '2026-10-15T12:00:00Z', cancelledAtUtc: null, version: crypto.randomUUID() }], budgets: [], requests: [], imports: [] })
-  const head = { id: vaultId, revision: 1, mutationId: crypto.randomUUID(), format: 1, isActive: true, updatedAtUtc: '2026-10-15T12:00:00Z', ...await encryptDocument(document, key, owner, vaultId, 1) }
-  const paths: string[] = []
-  await page.route('**/api/**', route => {
-    const path = new URL(route.request().url()).pathname; paths.push(path)
-    if (path === '/api/auth/options') return route.fulfill({ json: { emailRegistrationEnabled: false, telegramOnly: false, managedFinancialKeys: false } })
-    if (path === '/api/auth/refresh') return route.fulfill({ json: { accessToken: 'synthetic-chart-test', expiresAtUtc: '2099-01-01T00:00:00Z' } })
-    if (path === '/api/users/me') return route.fulfill({ json: { id: owner, email: 'chart@example.test', baseCurrency: 'RUB', registeredAtUtc: '2026-10-01T00:00:00Z' } })
-    if (path === '/api/private-finance') return route.fulfill({ json: { vault: head } })
-    if (path === '/api/currencies/rates') return route.fulfill({ json: { date: '2026-10-27', source: 'test', rublesPerUnit: { RUB: '1', USD: '100', EUR: '110' } } })
-    return route.fulfill({ status: 404, json: {} })
-  })
+test('server expenses: chart totals, centred history signs, responsive layout and accessible motion', async ({ page }) => {
+  const { paths } = await financialApp(page)
   await page.goto('/')
-  await page.getByLabel('Код восстановления', { exact: true }).fill(code)
-  await page.getByRole('button', { name: 'Разблокировать', exact: true }).click()
   await page.locator('.dashboard-period > summary').click()
   await page.getByLabel('С даты', { exact: true }).fill('2026-10-01')
   await page.getByLabel('По дату', { exact: true }).fill('2026-10-31')

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { financeHttp as http } from '../privateFinance/financeHttp'
+import { http } from '../../api/http'
 import { getApiError } from '../../api/apiError'
 import { useAuth } from '../auth/useAuth'
 import type { FinanceTransaction } from '../transactions/transactionApi'
@@ -25,7 +25,7 @@ export function DashboardPage() {
   const [period, setPeriod] = useState({ from: `${today.slice(0, 7)}-01`, to: today })
   const query = useQuery({
     queryKey: ['dashboard', period],
-    queryFn: async ({ signal }) => (await http.get<Dashboard>('/dashboard', { params: period, signal })).data,
+    queryFn: async ({ signal }) => (await http.get<Dashboard>('/finance/dashboard', { params: period, signal })).data,
   })
   const money = (amount: string) => display.money(amount, user?.baseCurrency ?? 'RUB')
   const data = query.data

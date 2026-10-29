@@ -1,5 +1,6 @@
 type BackButton = { show(): void; hide(): void; onClick(callback: () => void): void; offClick(callback: () => void): void }
-type TelegramWebApp = { initData: string; ready(): void; expand(): void; BackButton?: BackButton }
+type TelegramWebApp = { initData: string; ready(): void; expand(): void; BackButton?: BackButton;
+  isVersionAtLeast?(version: string): boolean; downloadFile?(params: { url: string; file_name: string }, callback?: (accepted: boolean) => void): void }
 declare global { interface Window { Telegram?: { WebApp?: TelegramWebApp } } }
 
 let launchError = ''
@@ -8,6 +9,14 @@ export const isTelegram = () => telegramLaunch
 export const telegramInitData = () => window.Telegram?.WebApp?.initData ?? ''
 export const telegramLaunchError = () => launchError
 export const telegramBackButton = () => window.Telegram?.WebApp?.BackButton
+export const telegramCanDownloadFile = () => Boolean(window.Telegram?.WebApp?.downloadFile && (window.Telegram.WebApp.isVersionAtLeast?.('8.0') ?? true))
+export function telegramDownloadFile(url: string, name: string) {
+  const app = window.Telegram?.WebApp
+  if (!app?.downloadFile) return Promise.reject(new Error('Обновите Telegram для сохранения файла.'))
+  return new Promise<boolean>((resolve, reject) => {
+    try { app.downloadFile!({ url, file_name: name }, resolve) } catch (error) { reject(error) }
+  })
+}
 
 export async function initializeTelegram() {
   const launch = new URLSearchParams(location.hash.slice(1))

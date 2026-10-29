@@ -6,5 +6,6 @@ if (Test-Path -LiteralPath $envPath) {
     exit 0
 }
 $key = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(48))
-[System.IO.File]::WriteAllText($envPath, "JWT_SIGNING_KEY=$key`n")
-Write-Host 'Created .env with a random local signing key.'
+$wrappingKey = [Convert]::ToBase64String([System.Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+[System.IO.File]::WriteAllText($envPath, "JWT_SIGNING_KEY=$key`nFINANCIAL_WRAPPING_KEY=$wrappingKey`nTELEGRAM_ONLY=true`nMANAGED_FINANCIAL_KEYS=true`nSERVER_FINANCIAL_RECORDS=true`nTELEGRAM_BOT_TOKEN=`nTELEGRAM_BOT_USERNAME=PetProjectFinanceBot`n")
+Write-Host 'Created .env with independent local signing and financial keys. Set TELEGRAM_BOT_TOKEN and TELEGRAM_BOT_USERNAME before starting the API.'

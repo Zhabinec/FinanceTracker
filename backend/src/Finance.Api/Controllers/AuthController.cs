@@ -27,7 +27,8 @@ public sealed class AuthController(
     [HttpGet("options")]
     public IActionResult Options() => Ok(new { emailRegistrationEnabled = EmailRegistrationEnabled,
         telegramOnly = configuration.GetValue<bool>("Auth:TelegramOnly"),
-        managedFinancialKeys = configuration.GetValue<bool>("FinanceKeys:Enabled") });
+        managedFinancialKeys = configuration.GetValue<bool>("FinanceKeys:Enabled"),
+        serverFinancialRecords = configuration.GetValue<bool>("FinanceRecords:Enabled") });
 
     [HttpPost("register")]
     [EnableRateLimiting("password-recovery")]

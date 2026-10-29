@@ -14,15 +14,6 @@ using Finance.Application.Auth.Refresh;
 using Finance.Application.Auth.Logout;
 using Finance.Application.Auth.Telegram;
 using Finance.Application.Users.GetCurrent;
-using Finance.Application.Categories.Create;
-using Finance.Application.Categories.Deactivate;
-using Finance.Application.Categories.GetCategories;
-using Finance.Application.Categories.Rename;
-using Finance.Application.Categories.Restore;
-using Finance.Application.Transactions.Create;
-using Finance.Application.Transactions.Delete;
-using Finance.Application.Transactions.GetTransactions;
-using Finance.Application.Transactions.Update;
 using Finance.Infrastructure.Persistence;
 using Finance.Infrastructure.Time;
 using Finance.Infrastructure.Security;
@@ -67,27 +58,13 @@ if (databaseOptions.Multiplexing || databaseOptions.Host?.Contains("-pooler.", S
 builder.Services.AddDbContext<FinanceDbContext>(options =>
     options.UseNpgsql(databaseConnectionString));
 builder.Services.AddScoped<IUserRegistrationStore, UserRegistrationStore>();
-builder.Services.AddScoped<Finance.Application.PrivateFinance.IPrivateFinanceStore, PrivateFinanceStore>();
-builder.Services.AddScoped<Finance.Application.PrivateFinance.PrivateFinanceHandler>();
 builder.Services.AddScoped<IUserLoginStore, UserLoginStore>();
 builder.Services.AddScoped<IUserProfileStore, UserProfileStore>();
-builder.Services.AddScoped<ICategoryStore, CategoryStore>();
-builder.Services.AddScoped<ITransactionStore, TransactionStore>();
-builder.Services.AddScoped<Finance.Application.Accounts.IAccountStore, AccountStore>();
-builder.Services.AddScoped<Finance.Application.Accounts.AccountHandler>();
-builder.Services.AddScoped<Finance.Application.Transfers.ITransferStore, TransferStore>();
-builder.Services.AddScoped<Finance.Application.Transfers.TransferHandler>();
-builder.Services.AddScoped<Finance.Application.Budgets.IBudgetStore, BudgetStore>();
-builder.Services.AddScoped<Finance.Application.Budgets.BudgetHandler>();
-builder.Services.AddScoped<Finance.Application.Imports.IImportStore, ImportStore>();
-builder.Services.AddScoped<Finance.Application.Imports.ImportHandler>();
 builder.Services.AddHttpClient("cbr-rates", client => { client.Timeout = TimeSpan.FromSeconds(10); client.MaxResponseContentBufferSize = 256_000; });
 builder.Services.AddSingleton<Finance.Application.Currencies.IExchangeRateProvider>(services =>
     new Finance.Infrastructure.Currencies.CbrExchangeRateProvider(
         () => services.GetRequiredService<IHttpClientFactory>().CreateClient("cbr-rates"),
         services.GetRequiredService<IClock>(), services.GetRequiredService<ILogger<Finance.Infrastructure.Currencies.CbrExchangeRateProvider>>()));
-builder.Services.AddScoped<Finance.Application.Dashboard.IDashboardStore, DashboardStore>();
-builder.Services.AddScoped<Finance.Application.Dashboard.DashboardHandler>();
 builder.Services.AddScoped<IRefreshSessionStore, RefreshSessionStore>();
 builder.Services.AddSingleton(new TelegramSettings(builder.Configuration["Telegram:BotToken"] ?? "", builder.Configuration["Telegram:BotUsername"] ?? "PetProjectFinanceBot"));
 var telegramOnly = builder.Configuration.GetValue<bool>("Auth:TelegramOnly");
@@ -96,10 +73,10 @@ var financialKeys = new FinancialKeySettings(builder.Configuration.GetValue<bool
         .GetChildren().ToDictionary(x => x.Key, x => x.Value ?? ""));
 if (financialKeys.Enabled && (!telegramOnly || string.IsNullOrWhiteSpace(builder.Configuration["Telegram:BotToken"])))
     throw new InvalidOperationException("Managed financial keys require Telegram-only mode and a configured bot.");
+if (builder.Configuration.GetValue<bool>("FinanceRecords:Enabled") && (!financialKeys.Enabled || !telegramOnly))
+    throw new InvalidOperationException("Server financial records require Telegram-only mode and financial key protection.");
 builder.Services.AddSingleton(financialKeys);
 builder.Services.AddSingleton(new FinancialKeyProtection(financialKeys));
-builder.Services.AddScoped<Finance.Application.PrivateFinance.IManagedKeyStore, ManagedKeyStore>();
-builder.Services.AddScoped<Finance.Application.PrivateFinance.ManagedKeyHandler>();
 builder.Services.AddSingleton<ITelegramInitDataVerifier, TelegramInitDataVerifier>();
 builder.Services.AddScoped<ITelegramAuthStore, TelegramAuthStore>();
 builder.Services.AddScoped<TelegramAuthHandler>();
@@ -125,6 +102,7 @@ builder.Services.AddScoped<IRecoveryEmailSender>(services => services.GetRequire
 builder.Services.AddScoped<Finance.Application.Auth.Verification.IConfirmationEmailSender>(services => services.GetRequiredService<RecoveryEmailSender>());
 builder.Services.AddRateLimiter(options =>
 {
+    options.AddConcurrencyLimiter("financial-backup", policy => { policy.PermitLimit = 1; policy.QueueLimit = 0; });
     // Shared process budgets run before authentication and its database lookup.
     // Do not partition by client-supplied forwarded headers or an unverified JWT subject.
     options.GlobalLimiter = PartitionedRateLimiter.CreateChained(
@@ -191,15 +169,6 @@ builder.Services.AddScoped<LoginUserHandler>();
 builder.Services.AddScoped<GetCurrentUserHandler>();
 builder.Services.AddScoped<RefreshTokensHandler>();
 builder.Services.AddScoped<LogoutHandler>();
-builder.Services.AddScoped<CreateCategoryHandler>();
-builder.Services.AddScoped<GetCategoriesHandler>();
-builder.Services.AddScoped<RenameCategoryHandler>();
-builder.Services.AddScoped<DeactivateCategoryHandler>();
-builder.Services.AddScoped<RestoreCategoryHandler>();
-builder.Services.AddScoped<CreateTransactionHandler>();
-builder.Services.AddScoped<GetTransactionsHandler>();
-builder.Services.AddScoped<UpdateTransactionHandler>();
-builder.Services.AddScoped<DeleteTransactionHandler>();
 builder.Services.AddHealthChecks()
     .AddCheck<DatabaseHealthCheck>("postgresql");
 
@@ -241,7 +210,10 @@ builder.Services
             NameClaimType = JwtRegisteredClaimNames.Sub
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options => options.AddPolicy("server-finance", policy =>
+    policy.RequireAuthenticatedUser().RequireClaim("telegram_link").RequireAssertion(_ =>
+        builder.Configuration.GetValue<bool>("FinanceRecords:Enabled") && financialKeys.Enabled && telegramOnly)));
+Finance.Api.FinancialRecordServices.AddTo(builder.Services);
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

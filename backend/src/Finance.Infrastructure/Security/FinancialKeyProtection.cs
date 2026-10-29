@@ -107,4 +107,23 @@ public sealed class FinancialKeyProtection
         finally { if (key is not null) CryptographicOperations.ZeroMemory(key); if (plain is not null) CryptographicOperations.ZeroMemory(plain); }
     }
     private static DomainException InvalidCode() => new("Код не подходит к этому хранилищу. Настройки не изменены.");
+
+    public static JsonDocument DecryptDocument(string code, PrivateFinancialVault vault)
+    {
+        NormalizeAndVerify(code, vault);
+        var key = Convert.FromBase64String(code.Split('.')[1].Replace('-', '+').Replace('_', '/') + "=");
+        var encrypted = Convert.FromBase64String(vault.Ciphertext);
+        var plain = new byte[encrypted.Length - 16];
+        try
+        {
+            using var aes = new AesGcm(key, 16);
+            aes.Decrypt(Convert.FromBase64String(vault.Nonce), encrypted.AsSpan(0, plain.Length), encrypted.AsSpan(plain.Length), plain,
+                Encoding.UTF8.GetBytes($"FinanceTracker:private:v1:{vault.UserId}:{vault.Id}:{vault.Revision}"));
+            // Parse(ReadOnlyMemory<byte>) retains its input. A stream gives JsonDocument its own
+            // buffer so wiping the decrypted byte array in finally cannot corrupt the returned JSON.
+            using var stream = new MemoryStream(plain, writable: false);
+            return JsonDocument.Parse(stream);
+        }
+        finally { CryptographicOperations.ZeroMemory(key); CryptographicOperations.ZeroMemory(plain); }
+    }
 }

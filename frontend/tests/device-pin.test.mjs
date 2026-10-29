@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { newRecoveryCode } from '../src/features/privateFinance/crypto.ts'
-import { wrapRecoveryCode, unwrapRecoveryCode } from '../src/features/privateFinance/devicePin.ts'
+import { newRecoveryCode } from '../src/features/legacyFinance/crypto.ts'
+import { wrapRecoveryCode, unwrapRecoveryCode } from '../src/features/legacyFinance/devicePin.ts'
 
 test('device PIN encrypts the recovery key, binds it to owner and vault, and authenticates the encrypted value', async () => {
   const user = crypto.randomUUID(), vault = crypto.randomUUID(), code = await newRecoveryCode()

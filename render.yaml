@@ -34,6 +34,8 @@ services:
         value: 'true'
       - key: FinanceKeys__Enabled
         value: 'true'
+      - key: FinanceRecords__Enabled
+        value: 'true'
       - key: FinanceKeys__ActiveKeyId
         value: v1
       - key: FinanceKeys__Keys__v1

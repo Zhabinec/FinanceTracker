@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from './useAuth'
 import { TelegramLinkPanel } from './TelegramLinkPanel'
-import { VaultControls } from '../privateFinance/VaultControls'
+import { FinancialBackupControls } from '../finance/FinancialBackupControls'
 import { GoogleSignIn } from './GoogleSignIn'
 import { useQuery } from '@tanstack/react-query'
 import { http } from '../../api/http'
@@ -21,7 +21,7 @@ export function AccountPage() {
         <div className="currency-badge">{user?.baseCurrency}</div>
       </section>
       <TelegramLinkPanel />
-      <VaultControls />
+      <FinancialBackupControls />
       {!telegramOnly && <section className="transactions-list-card"><h2>Доступ к аккаунту</h2>
         <GoogleSignIn link />
         {user?.email && delivery.data && !delivery.data.restricted && <><p className="dashboard-note">Для смены пароля отправим ссылку на ваш email.</p>

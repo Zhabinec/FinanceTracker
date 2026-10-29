@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/backend/tests/">
     <Project Path="backend/tests/Finance.IntegrationTests/Finance.IntegrationTests.csproj" />
+    <Project Path="backend/tests/Finance.LegacyFixtures/Finance.LegacyFixtures.csproj" />
     <Project Path="backend/tests/Finance.UnitTests/Finance.UnitTests.csproj" />
   </Folder>
 </Solution>

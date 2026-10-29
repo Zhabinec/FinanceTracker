@@ -1,7 +1,7 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { financeHttp as http } from '../privateFinance/financeHttp'
+import { http } from '../../api/http'
 import { getApiError } from '../../api/apiError'
 import { getCategories } from '../categories/categoryApi'
 import { useAuth } from '../auth/useAuth'
@@ -25,7 +25,7 @@ export function BudgetsPanel() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const budgets = useQuery({ queryKey: ['budgets', month], enabled: /^\d{4}-\d{2}$/.test(month),
-    queryFn: async ({ signal }) => (await http.get<Budget[]>('/budgets', { params: { month: `${month}-01` }, signal })).data })
+    queryFn: async ({ signal }) => (await http.get<Budget[]>('/finance/budgets', { params: { month: `${month}-01` }, signal })).data })
   const categories = useQuery({ queryKey: ['categories'], queryFn: getCategories })
   const available = categories.data?.filter(c => c.type === 'Expense' && !budgets.data?.some(b => b.categoryId === c.id)) ?? []
   const selected = categoryId || available[0]?.id || ''
@@ -41,8 +41,8 @@ export function BudgetsPanel() {
     if (!editing && !available.some(c => c.id === selected)) { setError('Выберите расходную категорию.'); return }
     submitting.current = true; setBusy(true)
     try {
-      if (editing) await http.put(`/budgets/${editing.id}`, { limit: amount.data.replace(',', '.'), version: editing.version })
-      else await http.post('/budgets', { month: `${month}-01`, categoryId: selected, limit: amount.data.replace(',', '.') })
+      if (editing) await http.put(`/finance/budgets/${editing.id}`, { limit: amount.data.replace(',', '.'), version: editing.version })
+      else await http.post('/finance/budgets', { month: `${month}-01`, categoryId: selected, limit: amount.data.replace(',', '.') })
       clear(); setNotice('Лимит сохранён.')
     } catch (failure) { setError(getApiError(failure, 'Не удалось сохранить лимит.')) }
     finally { await refresh(); submitting.current = false; setBusy(false) }
@@ -50,7 +50,7 @@ export function BudgetsPanel() {
   const remove = async (budget: Budget) => {
     if (submitting.current || !window.confirm(`Убрать лимит «${budget.categoryName}»? Расходы останутся в истории.`)) return
     submitting.current = true; setBusy(true); setError(''); setNotice('')
-    try { await http.delete(`/budgets/${budget.id}`, { params: { version: budget.version } }); clear(); setNotice('Лимит удалён.') }
+    try { await http.delete(`/finance/budgets/${budget.id}`, { params: { version: budget.version } }); clear(); setNotice('Лимит удалён.') }
     catch (failure) { setError(getApiError(failure, 'Не удалось удалить лимит.')) }
     finally { await refresh(); submitting.current = false; setBusy(false) }
   }

@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Finance.LegacyFixtures\Finance.LegacyFixtures.csproj" />
     <ProjectReference Include="..\..\src\Finance.Application\Finance.Application.csproj" />
     <ProjectReference Include="..\..\src\Finance.Domain\Finance.Domain.csproj" />
   </ItemGroup>

@@ -1,4 +1,4 @@
-import { financeHttp as http } from '../privateFinance/financeHttp'
+import { http } from '../../api/http'
 import type { CategoryType } from '../categories/categoryApi'
 
 export type FinanceTransaction = {
@@ -32,20 +32,20 @@ export type TransactionQuery = {
 export type TransactionPage = { items: FinanceTransaction[]; totalCount: number; page: number; pageSize: number }
 
 export async function getTransactions(query: TransactionQuery, signal?: AbortSignal) {
-  const response = await http.get<TransactionPage>('/transactions', { params: query, signal })
+  const response = await http.get<TransactionPage>('/finance/transactions', { params: query, signal })
   return response.data
 }
 
 export async function createTransaction(input: TransactionInput) {
-  const response = await http.post<FinanceTransaction>('/transactions', input)
+  const response = await http.post<FinanceTransaction>('/finance/transactions', input)
   return response.data
 }
 
 export async function updateTransaction(transactionId: string, input: TransactionInput) {
-  const response = await http.put<FinanceTransaction>(`/transactions/${transactionId}`, input)
+  const response = await http.put<FinanceTransaction>(`/finance/transactions/${transactionId}`, input)
   return response.data
 }
 
 export async function deleteTransaction(transactionId: string, version: string) {
-  await http.delete(`/transactions/${transactionId}`, { params: { version } })
+  await http.delete(`/finance/transactions/${transactionId}`, { params: { version } })
 }

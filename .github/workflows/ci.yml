@@ -69,11 +69,16 @@ jobs:
       JWT_SIGNING_KEY: ci-only-ephemeral-key-never-use-in-deployment-123456789
       TELEGRAM_BOT_TOKEN: 123456789:test-only-synthetic-bot-token-never-a-real-secret
       E2E_TELEGRAM: 'true'
+      TELEGRAM_ONLY: 'true'
+      MANAGED_FINANCIAL_KEYS: 'true'
+      SERVER_FINANCIAL_RECORDS: 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Generate ephemeral financial wrapping key
+        run: echo "FINANCIAL_WRAPPING_KEY=$(openssl rand -base64 32)" >> "$GITHUB_ENV"
       - run: docker compose config --quiet
       - name: Validate production Compose configuration
         env:
@@ -94,6 +99,8 @@ jobs:
           docker run -d --name finance-render-ci --network finance-tracker_default -p 127.0.0.1:5180:8080 \
             -e 'ConnectionStrings__Database=Host=postgres;Port=5432;Database=finance_tracker;Username=finance;Password=finance_dev' \
             -e Jwt__SigningKey="$JWT_SIGNING_KEY" -e Telegram__BotToken="$TELEGRAM_BOT_TOKEN" \
+            -e Auth__TelegramOnly=true -e FinanceKeys__Enabled=true -e FinanceKeys__ActiveKeyId=v1 \
+            -e FinanceKeys__Keys__v1="$FINANCIAL_WRAPPING_KEY" -e FinanceRecords__Enabled=true \
             -e Database__MigrateOnStartup=true -e Http__RedirectToHttps=false -e Auth__SecureCookies=false \
             -e Hosting__UseRenderExternalUrl=true -e RENDER_EXTERNAL_URL=http://localhost:5180 \
             -e Email__Provider=Mailpit -e Email__Endpoint=http://mailpit:8025/api/v1/send finance-render:ci
@@ -107,7 +114,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-results
+          name: playwright-results-${{ matrix.hosting }}
           path: |
             frontend/playwright-report
             frontend/test-results

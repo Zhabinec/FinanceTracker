@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Finance.LegacyFixtures\Finance.LegacyFixtures.csproj" />
     <ProjectReference Include="..\..\src\Finance.Api\Finance.Api.csproj" />
     <ProjectReference Include="..\..\src\Finance.Infrastructure\Finance.Infrastructure.csproj" />
   </ItemGroup>
