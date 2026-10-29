@@ -126,6 +126,10 @@ button:disabled { cursor: not-allowed; }
   .transaction-edit-form > div:has(> .calendar-field) { grid-column: 1 / -1; }
   .calendar-content { padding: 12px; }
 }
+@media (max-width: 700px) {
+  /* Mobile category sections have no enclosing surface; avoid a detached shadow. */
+  .categories-page .category-column { box-shadow: none; }
+}
 @media (prefers-reduced-motion: no-preference) {
   .calendar-dialog[open], .currency-options { animation: card-pop 180ms cubic-bezier(.2, .7, .3, 1); }
 }
