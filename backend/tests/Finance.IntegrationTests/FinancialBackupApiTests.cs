@@ -9,6 +9,39 @@ namespace Finance.IntegrationTests;
 
 public sealed partial class FinanceApiTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OpeningAnInvalidLegacySnapshotPreservesItsSourceAndDoesNotActivatePartialHistory(bool missingField)
+    {
+        using var app = ManagedApp().WithWebHostBuilder(b => b.UseSetting("FinanceRecords:Enabled", "true"));
+        using var client = ManagedClient(app); var identity = await RegisterManaged(client);
+        await Transaction(client, await Category(client), "25.00");
+        (await client.PostAsync("/api/private-finance/key/start", null)).EnsureSuccessStatusCode();
+        string ciphertext;
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<FinanceDbContext>();
+            var vault = await db.PrivateFinancialVaults.SingleAsync(x => x.UserId == identity.UserId);
+            var code = scope.ServiceProvider.GetRequiredService<Finance.Infrastructure.Security.FinancialKeyProtection>()
+                .Unprotect(await db.ManagedFinancialKeys.SingleAsync(x => x.UserId == identity.UserId));
+            using var source = Finance.Infrastructure.Security.FinancialKeyProtection.DecryptDocument(code, vault);
+            var root = JsonNode.Parse(source.RootElement.GetRawText())!;
+            if (missingField) root.AsObject().Remove("transactions");
+            else root["transactions"]![0]!["accountId"] = Guid.NewGuid();
+            var encrypted = Finance.Infrastructure.Security.FinancialKeyProtection.EncryptDocument(root.ToJsonString(), code, identity.UserId, vault.Id);
+            ciphertext = encrypted.Ciphertext;
+            db.Entry(vault).Property(x => x.Ciphertext).CurrentValue = ciphertext;
+            db.Entry(vault).Property(x => x.Nonce).CurrentValue = encrypted.Nonce;
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/api/finance/open", null)).StatusCode);
+        using var verification = app.Services.CreateScope(); var check = verification.ServiceProvider.GetRequiredService<FinanceDbContext>();
+        Assert.False(await check.FinancialWorkspaces.AnyAsync(x => x.UserId == identity.UserId));
+        Assert.False(await check.FinancialRecords.AnyAsync(x => x.UserId == identity.UserId));
+        Assert.Equal(ciphertext, (await check.PrivateFinancialVaults.SingleAsync(x => x.UserId == identity.UserId)).Ciphertext);
+        Assert.True(await check.ManagedFinancialKeys.AnyAsync(x => x.UserId == identity.UserId));
+    }
     [Fact]
     public async Task DirectOpenDoesNotProvisionAClientKeyOrDuplicateFinancialState()
     {

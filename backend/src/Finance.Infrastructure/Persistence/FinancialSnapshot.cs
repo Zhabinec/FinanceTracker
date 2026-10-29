@@ -24,6 +24,12 @@ internal sealed record FinancialSnapshot(string BaseCurrency, AccountData[] Acco
     private sealed record LegacyReceipt(Guid RequestId, Guid TransactionId, string Fingerprint);
     internal static FinancialSnapshot FromLegacy(JsonElement root)
     {
+        try { return ParseLegacy(root); }
+        catch (Exception e) when (e is JsonException or ArgumentException or InvalidOperationException or NullReferenceException or OverflowException or KeyNotFoundException)
+        { throw Invalid(); }
+    }
+    private static FinancialSnapshot ParseLegacy(JsonElement root)
+    {
         if (root.GetProperty("format").GetInt32() != 1) throw Invalid();
         string[] fields = ["format", "baseCurrency", "accounts", "categories", "transactions", "transfers", "budgets", "requests", "imports"];
         if (root.EnumerateObject().Any(x => !fields.Contains(x.Name))) throw Invalid();
@@ -86,8 +92,9 @@ internal sealed record FinancialSnapshot(string BaseCurrency, AccountData[] Acco
             Requests.Select(x => x.RequestId).Distinct().Count() != Requests.Length ||
             Imports.Any(x => x.Hash is null || x.Hash.Length != 64 || !x.Hash.All(Uri.IsHexDigit) || x.Count is < 0 or > 1000) ||
             Imports.Select(x => x.Hash).Distinct().Count() != Imports.Length) throw Invalid();
+        var receipts = Requests.ToDictionary(x => x.RequestId);
         foreach (var t in Transfers)
-            if (!Requests.Any(x => x.RequestId == t.RequestId && x.ResourceId == t.Id && x.ResourceKind == FinancialRecordKind.Transfer)) throw Invalid();
+            if (!receipts.TryGetValue(t.RequestId, out var receipt) || receipt.ResourceId != t.Id || receipt.ResourceKind != FinancialRecordKind.Transfer) throw Invalid();
         return balances;
     }
     internal IReadOnlyList<FinancialRecord> Protect(Guid owner, FinancialRecordProtection crypto, DateTimeOffset now, bool rotate, CancellationToken ct)
