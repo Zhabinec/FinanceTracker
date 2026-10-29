@@ -33,28 +33,28 @@ internal static class FinancialRecordPayload
         object value;
         if (typeof(T) == typeof(AccountData))
         {
-            var s = Read<AccountSecrets>();
-            value = new AccountData(row.Id, s.Name, s.Currency, s.OpeningBalance, s.Balance, s.IsArchived, row.Version);
+            var secrets = Read<AccountSecrets>();
+            value = new AccountData(row.Id, secrets.Name, secrets.Currency, secrets.OpeningBalance, secrets.Balance, secrets.IsArchived, row.Version);
         }
         else if (typeof(T) == typeof(CategoryData))
         {
-            var s = Read<CategorySecrets>(); value = new CategoryData(row.Id, s.Name, s.Type, s.IsActive, row.Version);
+            var secrets = Read<CategorySecrets>(); value = new CategoryData(row.Id, secrets.Name, secrets.Type, secrets.IsActive, row.Version);
         }
         else if (typeof(T) == typeof(TransactionData))
         {
-            var s = Read<TransactionSecrets>();
-            value = new TransactionData(row.Id, row.AccountId!.Value, row.CategoryId!.Value, s.Type, s.Amount, s.Description,
+            var secrets = Read<TransactionSecrets>();
+            value = new TransactionData(row.Id, row.AccountId!.Value, row.CategoryId!.Value, secrets.Type, secrets.Amount, secrets.Description,
                 row.OccurredOn!.Value, row.CreatedAtUtc, row.Version);
         }
         else if (typeof(T) == typeof(BudgetData))
-        { var s = Read<BudgetSecrets>(); value = new BudgetData(row.Id, row.CategoryId!.Value, row.OccurredOn!.Value, s.Limit, row.Version); }
+        { var secrets = Read<BudgetSecrets>(); value = new BudgetData(row.Id, row.CategoryId!.Value, row.OccurredOn!.Value, secrets.Limit, row.Version); }
         else if (typeof(T) == typeof(DailyTotalData))
-        { var s = Read<DailySecrets>(); value = new DailyTotalData(row.AccountId!.Value, row.CategoryId!.Value, row.OccurredOn!.Value, s.Type, s.Amount, s.Count); }
+        { var secrets = Read<DailySecrets>(); value = new DailyTotalData(row.AccountId!.Value, row.CategoryId!.Value, row.OccurredOn!.Value, secrets.Type, secrets.Amount, secrets.Count); }
         else if (typeof(T) == typeof(TransferData))
         {
-            var s = Read<TransferSecrets>();
-            value = new TransferData(row.Id, s.RequestId, row.AccountId!.Value, s.TargetAccountId, s.Currency, s.Amount,
-                s.Description, row.OccurredOn!.Value, row.CreatedAtUtc, s.CancelledAtUtc, row.Version);
+            var secrets = Read<TransferSecrets>();
+            value = new TransferData(row.Id, secrets.RequestId, row.AccountId!.Value, secrets.TargetAccountId, secrets.Currency, secrets.Amount,
+                secrets.Description, row.OccurredOn!.Value, row.CreatedAtUtc, secrets.CancelledAtUtc, row.Version);
         }
         else value = Read<T>()!;
         return (T)value;

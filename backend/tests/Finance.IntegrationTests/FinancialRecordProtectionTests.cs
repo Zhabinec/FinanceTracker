@@ -11,6 +11,25 @@ public sealed class FinancialRecordProtectionTests
     private sealed record Payload(string Name, decimal Amount);
     private static FinancialRecord Row(Guid owner) => FinancialRecord.Create(owner, FinancialRecordKind.Transaction,
         Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow, new(2026, 10, 29), Guid.NewGuid(), Guid.NewGuid());
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void OptimizedMetadataEncodingStillDecryptsPreviouslyWrittenRecords(bool indexedLinks)
+    {
+        var owner = Guid.NewGuid(); var code = FinancialKeyProtection.GenerateCode();
+        var row = indexedLinks ? Row(owner) : FinancialRecord.Create(owner, FinancialRecordKind.Account, Guid.NewGuid(), Guid.NewGuid(), DateTimeOffset.UtcNow);
+        var key = Convert.FromBase64String(code.Split('.')[1].Replace('-', '+').Replace('_', '/') + "=");
+        var oldMetadata = string.Join(':', "FinanceTracker:record:v1", row.UserId, (int)row.Kind, row.Id, row.Version,
+            row.OccurredOn?.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture) ?? "",
+            row.AccountId?.ToString() ?? "", row.CategoryId?.ToString() ?? "",
+            row.CreatedAtUtc.UtcTicks.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        var plain = "{\"name\":\"Stored before optimization\",\"amount\":25.01}"u8.ToArray();
+        var encrypted = new byte[plain.Length + 16]; var nonce = RandomNumberGenerator.GetBytes(12);
+        using (var cipher = new AesGcm(key, 16)) cipher.Encrypt(nonce, plain, encrypted.AsSpan(0, plain.Length), encrypted.AsSpan(plain.Length), Encoding.UTF8.GetBytes(oldMetadata));
+        CryptographicOperations.ZeroMemory(key); row.Protect(nonce, encrypted);
+        using var protection = new FinancialRecordProtection(owner, code);
+        Assert.Equal(new Payload("Stored before optimization", 25.01m), protection.Decrypt<Payload>(row));
+    }
     [Fact]
     public void MigrationDocumentOwnsItsBufferAfterTheTemporaryPlaintextIsWiped()
     {

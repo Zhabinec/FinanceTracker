@@ -12,7 +12,7 @@ public sealed class FinancialDeliveryTests
     [Fact]
     public void CiphertextTicketsAreBoundedExpireAndAllowOnlyOneDownload()
     {
-        var clock = new Clock(); var tickets = new FinancialDownloadTickets(clock);
+        var clock = new Clock(); using var tickets = new FinancialDownloadTickets(clock);
         var owner = Guid.NewGuid(); var first = tickets.Create(owner, [1, 2, 3]);
         Assert.Equal(new byte[] { 1, 2, 3 }, tickets.Take(first.Token, false));
         Assert.Equal(new byte[] { 1, 2, 3 }, tickets.Take(first.Token, true)); Assert.Null(tickets.Take(first.Token, true));
@@ -22,6 +22,32 @@ public sealed class FinancialDeliveryTests
         Assert.Throws<ConflictException>(() => tickets.Create(Guid.NewGuid(), [7]));
         clock.UtcNow = clock.UtcNow.AddMinutes(2); Assert.Null(tickets.Take(latest.Token, false));
         Assert.Null(tickets.Take("malformed", true));
+    }
+    private sealed class ManualTimer : ITimer
+    {
+        public bool Disposed { get; private set; }
+        public bool Change(TimeSpan dueTime, TimeSpan period) => !Disposed;
+        public void Dispose() => Disposed = true;
+        public ValueTask DisposeAsync() { Dispose(); return ValueTask.CompletedTask; }
+    }
+    private sealed class ManualTime : TimeProvider
+    {
+        public Action Tick { get; private set; } = () => { };
+        public ManualTimer Timer { get; } = new();
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        { Tick = () => callback(state); return Timer; }
+    }
+    [Fact]
+    public void UnclaimedExpiredFilesReleaseTheirBuffersWithoutAnotherDownloadRequest()
+    {
+        var clock = new Clock(); var time = new ManualTime();
+        var tickets = new FinancialDownloadTickets(clock, time);
+        tickets.Create(Guid.NewGuid(), new byte[100_000]);
+        Assert.Equal(100_000, tickets.RetainedBytes);
+        clock.UtcNow = clock.UtcNow.AddMinutes(2); time.Tick();
+        Assert.Equal(0, tickets.RetainedBytes);
+        tickets.Create(Guid.NewGuid(), new byte[100_000]); tickets.Dispose();
+        Assert.Equal(0, tickets.RetainedBytes); Assert.True(time.Timer.Disposed);
     }
     [Fact]
     public void BackupEncryptionBindsTheWholeSnapshotToItsOwnerAndVault()
