@@ -159,6 +159,7 @@ button:disabled { cursor: not-allowed; }
   .app-navigation { left: max(10px, env(safe-area-inset-left, 0px)); right: max(10px, env(safe-area-inset-right, 0px));
     bottom: max(10px, env(safe-area-inset-bottom, 0px)); border: var(--outline); padding: 5px;
     background: var(--paper); border-radius: 22px; box-shadow: 3px 3px 0 var(--ink); backdrop-filter: none; }
+  .telegram-app .app-navigation { padding-bottom: 5px; }
   .app-nav-link { min-height: 54px; border-radius: 15px; font-size: 11px; }
   .app-nav-link.active { background: var(--yellow); color: var(--ink); }
   .app-content { padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px)); }
