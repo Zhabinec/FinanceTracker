@@ -7,6 +7,7 @@ import type { Category } from '../categories/categoryApi'
 import type { MoneyAccount } from '../accounts/accountApi'
 import type { FinanceTransaction, TransactionInput } from './transactionApi'
 import { toTransactionInput, transactionSchema, type TransactionForm } from './validation'
+import { CalendarField } from '../../shared/CalendarField'
 
 export function TransactionRow({
   transaction,
@@ -41,6 +42,7 @@ export function TransactionRow({
       },
     })
   const selectedType = useWatch({ control, name: 'type' })
+  const occurredOn = useWatch({ control, name: 'occurredOn' })
   const selectableCategories = categories.filter((category) =>
     category.type === selectedType && (category.isActive || category.id === transaction.categoryId))
 
@@ -105,8 +107,9 @@ export function TransactionRow({
           </select>{errors.categoryId && <span className="field-error">{errors.categoryId.message}</span>}</label>
           <label>Сумма ({currency})<input inputMode="decimal" {...register('amount')} />
             {errors.amount && <span className="field-error">{errors.amount.message}</span>}</label>
-          <label>Дата<input type="date" {...register('occurredOn')} />
-            {errors.occurredOn && <span className="field-error">{errors.occurredOn.message}</span>}</label>
+          <div><CalendarField label="Дата" value={occurredOn} required disabled={busy}
+            onChange={value => setValue('occurredOn', value, { shouldDirty: true, shouldValidate: true })} />
+            {errors.occurredOn && <span className="field-error">{errors.occurredOn.message}</span>}</div>
           <label className="form-wide">Описание<input maxLength={500} {...register('description')} />
             {errors.description && <span className="field-error">{errors.description.message}</span>}</label>
           <div className="transaction-edit-actions form-wide">

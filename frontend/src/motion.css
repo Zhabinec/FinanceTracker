@@ -32,29 +32,28 @@
 .summary-value.data-reveal { display: inline-block; }
 @keyframes skeleton-shimmer { to { transform: translateX(100%); } }
 @keyframes data-enter {
-  from { opacity: 0; transform: translateY(7px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes card-pop {
+  from { opacity: 0; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .skeleton-block::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, #ffffff90, transparent); transform: translateX(-100%); animation: skeleton-shimmer 1600ms ease-in-out infinite; }
-  .data-reveal, .dashboard-shell .data-reveal { animation: data-enter 340ms cubic-bezier(.2, .7, .3, 1); }
-  .transaction-list.data-reveal > :nth-child(2) { animation-delay: 30ms; }
-  .transaction-list.data-reveal > :nth-child(3) { animation-delay: 60ms; }
-  .transaction-list.data-reveal > :nth-child(4) { animation-delay: 90ms; }
-  .transaction-list.data-reveal > :nth-child(n+5) { animation-delay: 120ms; }
-  .transaction-list.data-reveal > * { animation-fill-mode: backwards; }
-  .form-card,
-  .dashboard-shell > .transactions-list-card,
-  .dashboard-shell > .welcome-card,
-  .summary-grid > .transactions-list-card,
-  .category-list > .category-row,
-  .transaction-row {
-    animation: surface-enter 240ms cubic-bezier(.2, .7, .3, 1);
+  .data-reveal, .dashboard-shell .data-reveal { animation: data-enter 180ms ease-out; }
+  .data-reveal:is(.category-grid, .summary-grid, .transaction-list, .budget-list),
+  .dashboard-shell .data-reveal:is(.category-grid, .summary-grid, .transaction-list, .budget-list) { animation: none; }
+  .category-row, .transaction-row, .budget-card, .account-card, .dashboard-metrics > article, .summary-list > li {
+    animation: card-pop 280ms cubic-bezier(.34, 1.5, .64, 1) backwards;
+    transform-origin: center;
   }
-
-  .summary-grid > :nth-child(2) { animation-duration: 290ms; }
-  .summary-grid > :nth-child(3) { animation-duration: 340ms; }
+  :is(.transaction-list, .category-list, .summary-grid, .budget-list, .summary-list) > :nth-child(2) { animation-delay: 24ms; }
+  :is(.transaction-list, .category-list, .summary-grid, .budget-list, .summary-list) > :nth-child(3) { animation-delay: 48ms; }
+  :is(.transaction-list, .category-list, .summary-grid, .budget-list, .summary-list) > :nth-child(4) { animation-delay: 72ms; }
+  :is(.transaction-list, .category-list, .summary-grid, .budget-list, .summary-list) > :nth-child(n+5) { animation-delay: 96ms; }
+  .form-card { animation: data-enter 180ms ease-out; }
 
   .quick-dialog[open] { animation: dialog-enter 200ms cubic-bezier(.2, .7, .3, 1); }
   .quick-dialog[open]::backdrop { animation: backdrop-enter 160ms ease-out; }

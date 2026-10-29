@@ -33,7 +33,8 @@ test('server expenses: chart totals, centred history signs, responsive layout an
   await chart.scrollIntoViewIfNeeded()
   await page.screenshot({ path: 'test-results/expense-chart-desktop.png', fullPage: true })
   // Currency conversion changes labels, not the underlying expense shares.
-  await page.getByRole('combobox', { name: 'Валюта отображения', exact: true }).selectOption('USD')
+  await page.getByRole('combobox', { name: 'Валюта отображения', exact: true }).click()
+  await page.getByRole('option', { name: /USD/ }).click()
   await expect(chart.locator('.expense-donut-center')).toContainText('1,00')
   await expect(chart.getByRole('button', { name: /Продукты/ })).toContainText('75%')
   await page.getByLabel('С даты', { exact: true }).fill('2026-11-01')
