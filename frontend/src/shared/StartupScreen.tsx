@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Mascot } from './Mascot'
 
 export function StartupScreen({ error = false, onRetry }: { error?: boolean; onRetry?: () => void }) {
   const [waiting, setWaiting] = useState(false)
@@ -7,7 +8,7 @@ export function StartupScreen({ error = false, onRetry }: { error?: boolean; onR
     return () => clearTimeout(timer)
   }, [])
   return <main className="startup-screen" aria-busy={!error}>
-    <div className="startup-mark" aria-hidden="true">₽</div>
+    <Mascot className="startup-mascot" eager />
     <h1>Finance Tracker</h1>
     <p role={error ? 'alert' : 'status'}>{error ? 'Не удалось подключиться' : waiting ? 'Подключаемся к вашим финансам…' : 'Открываем ваши финансы…'}</p>
     {waiting && !error && <p className="startup-hint">Первый запуск после перерыва может занять около минуты.</p>}

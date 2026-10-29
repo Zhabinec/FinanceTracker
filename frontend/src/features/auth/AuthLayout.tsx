@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useEffect, type ReactNode } from 'react'
+import { Mascot } from '../../shared/Mascot'
 
 export function AuthLayout({ title, subtitle, alternateText, alternateLink,
   alternateLabel, children }: { title: string; subtitle: string; alternateText: string;
@@ -12,8 +13,9 @@ export function AuthLayout({ title, subtitle, alternateText, alternateLink,
         <div>
           <p className="eyebrow">Finance Tracker</p>
           <h1>Деньги любят<br />ясность.</h1>
-          <p className="brand-copy">Доходы, расходы и категории — в одном спокойном пространстве без лишнего шума.</p>
+          <p className="brand-copy">Меньше суеты. Больше ясности в деньгах.</p>
         </div>
+        <Mascot className="auth-mascot" eager />
         <p className="brand-footnote">Личный финансовый трекер</p>
       </section>
       <section className="form-panel">

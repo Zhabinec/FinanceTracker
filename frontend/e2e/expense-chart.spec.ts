@@ -4,6 +4,13 @@ import { financialApp } from './fixtures/financialApp'
 test('server expenses: chart totals, centred history signs, responsive layout and accessible motion', async ({ page }) => {
   const { paths } = await financialApp(page)
   await page.goto('/')
+  await expect(page.locator('.overview-art img')).toBeVisible()
+  await expect.poll(() => page.locator('.overview-art img').evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+  await expect(page.locator('.overview-art img')).toHaveCSS('opacity', '1')
+  await page.screenshot({ path: 'test-results/overview-theme-desktop.png' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({ path: 'test-results/overview-theme-mobile.png' })
+  await page.setViewportSize({ width: 1280, height: 900 })
   await page.locator('.dashboard-period > summary').click()
   await page.getByLabel('С даты', { exact: true }).fill('2026-10-01')
   await page.getByLabel('По дату', { exact: true }).fill('2026-10-31')
@@ -38,10 +45,15 @@ test('server expenses: chart totals, centred history signs, responsive layout an
     await page.setViewportSize({ width, height: 900 })
     const badges = page.locator('.transaction-sign')
     for (const badge of await badges.all()) {
-      const frame = await badge.boundingBox(), icon = await badge.locator('svg').boundingBox()
-      expect(frame).not.toBeNull(); expect(icon).not.toBeNull()
-      expect(Math.abs(frame!.x + frame!.width / 2 - icon!.x - icon!.width / 2)).toBeLessThan(1)
-      expect(Math.abs(frame!.y + frame!.height / 2 - icon!.y - icon!.height / 2)).toBeLessThan(1)
+      // Read both rectangles in the same animation frame; sequential protocol calls
+      // can observe different positions while the containing row is entering.
+      const offset = await badge.evaluate(element => {
+        const frame = element.getBoundingClientRect(), icon = element.querySelector('svg')!.getBoundingClientRect()
+        return { x: Math.abs(frame.x + frame.width / 2 - icon.x - icon.width / 2),
+          y: Math.abs(frame.y + frame.height / 2 - icon.y - icon.height / 2) }
+      })
+      expect(offset.x).toBeLessThan(1)
+      expect(offset.y).toBeLessThan(1)
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (width === 390) await page.screenshot({ path: 'test-results/history-polish-mobile.png', fullPage: true })

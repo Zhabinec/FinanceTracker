@@ -1,5 +1,5 @@
 export type CategoryTotal = { categoryId: string; categoryName: string; type: 'Income' | 'Expense'; amount: string }
-const colors = ['#287660', '#b76138', '#526fa0', '#95714a', '#925d85', '#53818a', '#7a8068']
+const colors = ['#8170bd', '#ed987e', '#9cbf71', '#e3b333', '#c982a2', '#619ba1', '#939096']
 const decimal = (value: bigint) => `${value / 100n}.${String(value % 100n).padStart(2, '0')}`
 function cents(value: string) {
   if (!/^\d+\.\d{2}$/.test(value)) throw new Error('Некорректная сумма расходов.')
