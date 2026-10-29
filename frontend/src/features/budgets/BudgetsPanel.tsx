@@ -8,6 +8,7 @@ import { useAuth } from '../auth/useAuth'
 import { useCurrencyDisplay } from '../currencies/currencyDisplayContext'
 import { todayInMoscow, transactionSchema } from '../transactions/validation'
 import { DataSkeleton } from '../../shared/DataSkeleton'
+import { CalendarField } from '../../shared/CalendarField'
 
 type Budget = { id: string; categoryId: string; categoryName: string; categoryActive: boolean; month: string;
   limit: string; spent: string; remaining: string; overspent: string; version: string }
@@ -57,8 +58,8 @@ export function BudgetsPanel() {
 
   return <section className="transactions-list-card budgets-panel" aria-labelledby="budgets-title">
     <div className="budgets-header"><h2 id="budgets-title">Бюджеты на месяц</h2>
-      <label>Месяц бюджета<input type="month" min="1900-01" max="9998-12" value={month} disabled={busy}
-        onChange={event => { setMonth(event.target.value); clear(); setError(''); setNotice('') }} /></label></div>
+      <CalendarField label="Месяц бюджета" kind="month" value={month} disabled={busy}
+        onChange={next => { setMonth(next); clear(); setError(''); setNotice('') }} /></div>
     {notice && <div className="notice success" role="status">{notice}</div>}
     {error && <div className="notice error" role="alert">{error}</div>}
     {!month && <p>Выберите месяц бюджета.</p>}

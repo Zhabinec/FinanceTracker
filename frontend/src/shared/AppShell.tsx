@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { telegramBackButton } from '../platform/telegram'
 import { useAuth } from '../features/auth/useAuth'
@@ -33,7 +33,8 @@ export function AppShell() {
     return () => { button.offClick(back); button.hide() }
   }, [location.pathname, navigate])
   const section = sections.find(item => item.path === location.pathname) ?? sections[0]
-  useEffect(() => {
+  // Reset before paint: a new section must not flash at the previous scroll position.
+  useLayoutEffect(() => {
     document.title = `${section.title} · Finance Tracker`
     window.scrollTo({ top: 0, behavior: 'instant' })
   }, [section.title])

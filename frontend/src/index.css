@@ -1,6 +1,8 @@
 :root { font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif; color: #19231d; background: #f2f0e9; font-synthesis: none; }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100vh; }
+html { scrollbar-gutter: stable; scrollbar-width: thin; scrollbar-color: #b5a1ed #fff8ed; }
+@supports not (scrollbar-gutter: stable) { html { overflow-y: scroll; } }
+body { margin: 0; min-width: 0; min-height: 100vh; }
 button, input, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 .private-gate { max-width: 620px; margin: 5vh auto; padding: 16px; }

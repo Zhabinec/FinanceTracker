@@ -12,6 +12,7 @@ import { BudgetsPanel } from '../budgets/BudgetsPanel'
 import { ExpenseDonut } from './ExpenseDonut'
 import { DataSkeleton } from '../../shared/DataSkeleton'
 import { Mascot } from '../../shared/Mascot'
+import { CalendarField } from '../../shared/CalendarField'
 
 type Dashboard = {
   from: string; to: string; income: string; expense: string; result: string
@@ -49,8 +50,8 @@ export function DashboardPage() {
     <details className="panel-disclosure dashboard-period"><summary>Период <span>{formatDate(period.from)} — {formatDate(period.to)}</span></summary>
     <section className="transactions-list-card">
       <div className="transaction-filters">
-        <label>С даты<input type="date" value={period.from} onChange={(event) => setPeriod({ ...period, from: event.target.value })} /></label>
-        <label>По дату<input type="date" value={period.to} onChange={(event) => setPeriod({ ...period, to: event.target.value })} /></label>
+        <CalendarField label="С даты" value={period.from} onChange={from => setPeriod({ ...period, from })} />
+        <CalendarField label="По дату" value={period.to} onChange={to => setPeriod({ ...period, to })} />
         <button className="ghost-button" onClick={() => setPeriod({ from: `${today.slice(0, 7)}-01`, to: today })}>Текущий месяц</button>
       </div>
     </section>

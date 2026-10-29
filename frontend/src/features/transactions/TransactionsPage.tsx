@@ -10,6 +10,7 @@ import type { TransactionInput, TransactionQuery } from './transactionApi'
 import { useTransactions } from './useTransactions'
 import { ImportPanel } from '../imports/ImportPanel'
 import { DataSkeleton } from '../../shared/DataSkeleton'
+import { CalendarField } from '../../shared/CalendarField'
 
 export function TransactionsPage() {
   const { user } = useAuth()
@@ -46,8 +47,8 @@ export function TransactionsPage() {
           <label>Счёт<select value={query.accountId ?? ''} onChange={event => changeFilter({ accountId: event.target.value || undefined })}>
             <option value="">Все</option>{accounts.map(a => <option key={a.id} value={a.id}>{a.name}{a.isArchived ? ' (архив)' : ''}</option>)}
           </select></label>
-          <label>С даты<input type="date" value={query.from ?? ''} onChange={(event) => changeFilter({ from: event.target.value || undefined })} /></label>
-          <label>По дату<input type="date" value={query.to ?? ''} onChange={(event) => changeFilter({ to: event.target.value || undefined })} /></label>
+          <CalendarField label="С даты" value={query.from ?? ''} onChange={from => changeFilter({ from: from || undefined })} />
+          <CalendarField label="По дату" value={query.to ?? ''} onChange={to => changeFilter({ to: to || undefined })} />
           <label>Тип<select value={query.type ?? ''} onChange={(event) => changeFilter({ type: event.target.value as TransactionQuery['type'] || undefined, categoryId: undefined })}>
             <option value="">Все</option><option value="Income">Доходы</option><option value="Expense">Расходы</option>
           </select></label>
